@@ -132,9 +132,6 @@ def main():
     lines_power = file_power.readlines()
     file_power.close()
 
-    print(findcardinline(lines, "Card 11.3", 2))
-    print(findheaderinline(lines, "I AN PW"))
-
     '''
     Begin the READS and simple Calculations, not DELETES nor WRITES yet
     '''
@@ -239,11 +236,9 @@ def main():
 
     ngaps = int(lines[findheaderinline(lines, "NK NDM2")+1].split()[0])  # looks for the following position
     # of the header in string, splits it and gets the term, which is in first position, i.e. [0]
-    print(ngaps)
 
     # gets the number of rods from Card 8.1
     nrods = int(lines[findheaderinline(lines, "NRRD NSRD")+1].split()[0])
-    print(nrods)
 
 
     '''Here it begins to re-write and compute'''
@@ -322,7 +317,6 @@ def main():
 
     # gets NONO variable and calculate new MSIM
     nono = int(lines[findheaderinline(lines, "NCHN NONO")+1].split()[2])
-    print(nono)
     new_msim = nono*new_chn
 
     # Changes NCHN in Card 4.2
