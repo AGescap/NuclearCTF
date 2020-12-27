@@ -739,9 +739,8 @@ def main():
                 line_aux = '     ' + '   '.join(line_aux) + '\n'
                 lines[findheaderinline(lines, "FQR1 FQR2 FQR3") + 1 + i] = line_aux
 
-    # End of the track
-    # open('Deck_definitivo.inp', 'x')
-    file = open('deck_definitivo.inp', 'w')
+    #Create the new file and write lines in it
+    file = open('new_deck.inp', 'w')
     file.writelines(lines)
     file.close()
 
