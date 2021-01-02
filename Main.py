@@ -162,7 +162,7 @@ def main():
     # stores in lists magnitudes from card 2
     nchn = int(lines[findheaderinline(lines, "NCH NDM2")+1].split()[0])
     nchn_side = int(np.sqrt(nchn))
-    D_lev = 7
+    D_lev = 2
     if nchn_side%D_lev != 0:
        print("ERROR: The original number of channels per side is not divisible by Dlev: " + str(D_lev) + "\n")
        sys.exit(1)
@@ -250,14 +250,6 @@ def main():
     bundle_pitch = float(lines_assem[findheaderinline(lines_assem, "Bundle pitch") + 1].split()[0])
     bundle_pitch = bundle_pitch/1000
 
-    # gets free space (free_sp) between bundle and limits
-
-    free_sp = (bundle_pitch - (nchn_side-2)*pin_pitch)/2
-
-    # creates new X and Y locations for the new channels
-
-    lshort = free_sp + (D_lev-1)*pin_pitch
-    
     # gets gap number in Card 3 and ensure everything is ok
 
     ngaps = int(lines[findheaderinline(lines, "NK NDM2")+1].split()[0])  # looks for the following position
