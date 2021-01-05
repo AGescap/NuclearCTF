@@ -128,29 +128,7 @@ def format_e(n):    # This function allows to write a float as a string with sci
     a = '%E' % n
     return a.split('E')[0].rstrip('0').rstrip('.') + 'E' + a.split('E')[1]
 
-def findthechannelingaps(vgaps, val, time=1):
-    # finds the first channel with number of channel val in the vector of gaps and returns the number of gap
-    aux = 0
-    clock = 1
-    for i in range(0, ngaps):
-        if vgaps[i][1] == val:
-            if clock < time:
-                clock = clock +1
-            else:
-                aux = i+1
-                break
-    return aux
 
-def findsubchannelinchannel(sub2chan, subch):
-    aux = 0
-    for i in range(0, new_chn):
-        for j in range(0, D_lev):
-            for k in range(0, D_lev):
-                if sub2chan[i][j][k] == subch:
-                    aux = i+1
-                    break
-    return aux
-    
 def main():
     '''
     Here the approach is that of deducting all the subchannel properties from prepro data, given that some features as
@@ -296,6 +274,29 @@ def main():
         for j in range(0, D_lev):
             for k in range(0, D_lev):
                 subchannels_in_channel[i][j][k] = refchannel(i+1, D_lev, nchn_side) + j*nchn_side + k
+
+    def findthechannelingaps(vgaps, val, time=1):
+        # finds the first channel with number of channel val in the vector of gaps and returns the number of gap
+        aux = 0
+        clock = 1
+        for i in range(0, ngaps):
+            if vgaps[i][1] == val:
+                if clock < time:
+                    clock = clock +1
+                else:
+                    aux = i+1
+                    break
+        return aux
+
+    def findsubchannelinchannel(sub2chan, subch):
+        aux = 0
+        for i in range(0, new_chn):
+            for j in range(0, D_lev):
+                for k in range(0, D_lev):
+                    if sub2chan[i][j][k] == subch:
+                        aux = i+1
+                        break
+        return aux
 
     # Substitutes the number of channels in Group 2
 
