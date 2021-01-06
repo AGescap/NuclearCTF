@@ -19,6 +19,7 @@ References:
 
 '''
 
+
 def findcardinline(doc, string, time=1):
     # so as to count the iterations. Caution is needed with the string here, because if one types
     # e.g. Card 3.3., it will find both Card 3.3 or Card 3.3.5.
@@ -78,7 +79,7 @@ def findnextto(doc, string1, string2, time1=1, time2=1):
 def removeexcesslines(doc, begin, prior, actual):
     remove = prior - actual
     for i in range(0, remove):
-         doc.pop(begin+actual+1)
+        doc.pop(begin+actual+1)
 
 
 def rewritesomelines(doc, begin, piece):
@@ -162,9 +163,15 @@ def main():
 
     # gets rods number in the assembly
 
-    nrods = int(l_assem[findheaderinline(l_assem, "Number of fuel rods")+1].split()[0])
+    nfrods = int(l_assem[findheaderinline(l_assem, "Number of fuel rods")+1].split()[0])
 
+    # gets number of guidetubes
 
+    ngt = int(l_assem[findheaderinline(l_assem, "Number of guide tubes/water rods") + 1].split()[0])
+
+    # total number of rods, rods per side, channels per side, discretization level
+
+    nrods = nfrods + ngt
     nrods_side = int(np.sqrt(nrods))
     nchn_side = nrods_side + 1
     nchn = nchn_side**2
@@ -173,6 +180,10 @@ def main():
     if nchn_side % dlev != 0:
         print("ERROR: The original number of channels per side is not divisible by dlev: " + str(dlev) + "\n")
         sys.exit(1)
+
+    # new number of channels in the new, homogenized bundle
+
+    newchn = int(nchn/(dlev**2))
 
     # gets bundle pitch and converts it into m
 
@@ -184,19 +195,27 @@ def main():
     pp = float(l_assem[findheaderinline(l_assem, "Pin pitch") + 1].split()[0])
     pp = pp / 1000
 
-    # gets number of guidetubes
-
-    ngt = int(l_assem[findheaderinline(l_assem, "Number of guide tubes/water rods") + 1].split()[0])
-
     # gets position of guide tubes if there are any. with the origin in top left corner of the FA,
     # the "0th" position marks the row and "1st" position, the column
 
+    fr_od = float(l_assem[findheaderinline(l_assem, "Cladding outer diameter") + 1].split()[0])
+    fr_od = fr_od/1000
+
+    gtpos = np.zeros((ngt, 2), dtype=int)
+    rodtype = np.zeros(nrods, dtype=int)
+    auxvar = int(0)
+
     if ngt > 0:
-        gtpos = np.zeros((ngt, 2), dtype=int)
+
         for i in range(ngt):
             linaux = l_assem[findheaderinline(l_assem, "Use X Y format") + 1+i].split()
             gtpos[i][0] = int(linaux[0])
             gtpos[i][1] = int(linaux[1])
+            auxvar = nrods_side*(gtpos[i][0]-1) + gtpos[i][1] - 1
+            rodtype[auxvar] = 1
+
+        gt_od = float(l_assem[findheaderinline(l_assem, "Outer diameter of guide tube/water rod") + 1].split()[0])
+        gt_od = gt_od/1000
 
     # stores the fuel assembly map
 
@@ -211,13 +230,14 @@ def main():
     # first coordinate refers to rows and second coordinate refers to columns
 
     core_cent = np.zeros((fa_numrow, fa_numcol, 2), dtype=float)
+
     for i in range(fa_numcol):
         for j in range(fa_numrow):
             core_cent[j][i][0] = ((i+1) - 0.5 - float(fa_numcol)/2)*bp
             core_cent[j][i][1] = (float(fa_numrow)/2 + 0.5 - (j+1))*bp
 
 
-    #this matrix will only contain the center of the FAs
+    # this matrix will only contain the center of the FAs
 
     fa_cent = np.zeros((fa_num, 2), dtype=float)
 
@@ -226,12 +246,13 @@ def main():
     fa_transl = np.zeros(fa_num, dtype=int)
     fa_types = np.zeros(fa_num, dtype=int)
 
-    #core map has the core map, with the positions and the indexes
+    # core map has the core map, with the positions and the indexes
+
     core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
     cont_a = 1
     cont_b = 0
 
-    #edit fa_transl, edit core_map
+    # edit fa_transl, edit core_map
 
     for i in range(fa_numrow):
         linaux = (l_geo[findheaderinline(l_geo, "FUEL ASSEMBLY MAP") + 2+i].split())
@@ -250,6 +271,85 @@ def main():
 
     # now, for every FA type, generic info about channels (An, Pw, XSIZ, YSIZ) should be created
     # gaps data demands more complexity
+
+    # creates an array
+
+    od_s = []
+
+    if ngt > 0:
+        od_s = np.ones(2, dtype=float)
+        od_s[0] = fr_od
+        od_s[1] = gt_od
+
+    # creates an array with the subchannels that correspond to a rod
+
+    subchannels_in_rod = np.zeros((nrods, 2, 2), dtype=int)
+
+    for i in range(0, nrods):
+        top = i+1 + i//(nchn_side-1)
+        subchannels_in_rod[i][0][0] = top
+        subchannels_in_rod[i][0][1] = top + 1
+        subchannels_in_rod[i][1][0] = top + nchn_side
+        subchannels_in_rod[i][1][1] = top + nchn_side+1
+
+    # creates a matrix to store the data of the subchannels, so they can be merged afterwards
+
+    an = np.zeros(nchn, dtype=float)
+    pw = np.zeros(nchn, dtype=float)
+    xsiz = np.zeros(nchn, dtype=float)
+    ysiz = np.zeros(nchn, dtype=float)
+    channX = np.zeros(nchn, dtype=float)
+    channY = np.zeros(nchn, dtype=float)
+
+    # identifies corner, side (horizontal and vertical) and center subchannels
+
+    chan_corner = np.array([1, nchn_side, nchn - nchn_side + 1, nchn], dtype=int)
+    chan_sideH = np.zeros(2*(nchn_side-2), dtype=int)
+    chan_sideV = np.zeros(2*(nchn_side-2), dtype=int)
+    chan_center = np.zeros((nchn_side - 2)**2, dtype=int)
+
+    for i in range(0, nchn_side-2):
+        chan_sideH[i] = 2+i
+        chan_sideH[nchn_side-2+i] = nchn - nchn_side + 2 + i
+        chan_sideV[2*i] = nchn_side + 1 + i*nchn_side
+        chan_sideV[2*i+1] = 2*nchn_side + i*nchn_side
+
+    for i in range(0, (nchn_side-2)**2):
+        chan_center[i] = nchn_side + 2 + i % (nchn_side-2) + nchn_side * (i // (nchn_side-2))
+
+    #gives values to the subchannel data
+
+    for i in range(0, 4):
+        xsiz[chan_corner[i]-1] = free_sp
+        ysiz[chan_corner[i]-1] = free_sp
+
+    channX[chan_corner[0]-1] = -bp/2 + free_sp/2
+    channY[chan_corner[0]-1] = bp/2 - free_sp/2
+    channX[chan_corner[1]-1] = bp / 2 - free_sp / 2
+    channY[chan_corner[1]-1] = bp / 2 - free_sp / 2
+    channX[chan_corner[2]-1] = -bp / 2 + free_sp / 2
+    channY[chan_corner[2]-1] = -bp / 2 + free_sp / 2
+    channX[chan_corner[3]-1] = bp / 2 - free_sp / 2
+    channY[chan_corner[3]-1] = -bp / 2 + free_sp / 2
+
+    for i in range(0, nchn_side-2):
+        channX[chan_sideH[i]-1] = -bp / 2 + free_sp + pp/2 + i*pp
+        channY[chan_sideH[i]-1] = bp / 2 - free_sp / 2
+        channX[chan_sideH[nchn_side-2+i] - 1] = -bp / 2 + free_sp + pp / 2 + i * pp
+        channY[chan_sideH[nchn_side-2+i] - 1] = -bp / 2 + free_sp / 2
+
+    def findsubchannelinchannel(sub2chan, subch):
+        aux = 0
+        for i in range(0, newchn):
+            for j in range(0, dlev):
+                for k in range(0, dlev):
+                    if sub2chan[i][j][k] == subch:
+                        aux = i + 1
+                        break
+        return aux
+
+
+
     print(fa_num)
     print(fa_types)
     print(fa_numcol)
@@ -266,9 +366,17 @@ def main():
     print(fa_types)
     print(core_cent)
     print(fa_cent)
+    print(rodtype)
+    print(chan_corner)
+    print(chan_sideH)
+    print(chan_sideV)
+    print(chan_center)
+
     if ngt > 0:
         print(gtpos)
 
+    print(channX)
+    print(channY)
     # Create the new file and write lines in it
     file = open('new_deck.inp', 'w')
     file.writelines(lines)
