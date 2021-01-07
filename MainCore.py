@@ -192,10 +192,11 @@ def main():
     # new number of channels in the new, homogenized bundle
 
     newchn = int(nchn/(dlev**2))
+    newchn_tot = fa_num*newchn
 
     # gets bundle pitch and converts it into m
 
-    bp = float(l_assem[findheaderinline(l_assem, "Bundle pitch") + 1].split()[0])
+    bp = np.float64(l_assem[findheaderinline(l_assem, "Bundle pitch") + 1].split()[0])
     bp = bp / 1000
 
     # gets pin pitch and converts it into mm
@@ -277,6 +278,9 @@ def main():
     # conectivity of the different subchannels
 
     fa_connect = np.zeros((fa_num, 2), dtype=int)
+    # a matrix that stores two values for every fuel assembly. First component is valued 1 if there is another
+    # FA just rightwards and valued 0 if not. The same for the second component but it checks if there is a FA
+    # just downwards
 
     for i in range(0, fa_num - 1):
         auxvar = ret_FA(fa_numcol, fa_transl[i])
@@ -306,8 +310,6 @@ def main():
                 if core_map[auxvar[0]][auxvar[1] - 1] != 0:
                     fa_connect[i][1] = 1
 
-
-
     # local parameters in a FA
     free_sp = (bp - (nrods_side-1)*pp)/2
 
@@ -323,6 +325,14 @@ def main():
         od_s[0] = fr_od
         od_s[1] = gt_od
 
+    print(rodtype)
+    od_rods = fr_od*np.ones(nrods, dtype=float)
+    print(ngt)
+    print(od_s)
+    if ngt > 0:
+        for i in range(0, nrods):
+            od_rods[i] = od_s[rodtype[i]]
+
     # creates an array with the subchannels that correspond to a rod
 
     subchannels_in_rod = np.zeros((nrods, 2, 2), dtype=int)
@@ -336,13 +346,13 @@ def main():
 
     # creates a matrix to store the data of the subchannels, so they can be merged afterwards
 
-    an = np.zeros(nchn, dtype=float)
-    pw = np.zeros(nchn, dtype=float)
-    xsiz = np.zeros(nchn, dtype=float)
-    ysiz = np.zeros(nchn, dtype=float)
-    coords = np.zeros(nchn_side, dtype=float)
-    channX = np.zeros(nchn, dtype=float)
-    channY = np.zeros(nchn, dtype=float)
+    an = np.zeros(nchn, dtype=np.float64)
+    pw = np.zeros(nchn, dtype=np.float64)
+    xsiz = np.zeros(nchn, dtype=np.float64)
+    ysiz = np.zeros(nchn, dtype=np.float64)
+    coords = np.zeros(nchn_side, dtype=np.float64)
+    channX = np.zeros(nchn, dtype=np.float64)
+    channY = np.zeros(nchn, dtype=np.float64)
 
     # identifies corner, side (horizontal and vertical) and center subchannels
 
@@ -387,6 +397,28 @@ def main():
         xsiz[chan_center[i] - 1] = pp
         ysiz[chan_center[i] - 1] = pp
 
+    # edits nominal area and wet perimeter for the channels
+
+    for i in range(0, nchn):
+        an[i] = xsiz[i]*ysiz[i]
+
+    for i in range(0, nrods):
+        for j in range(0, 2):
+            for k in range(0, 2):
+                an[subchannels_in_rod[i][j][k]-1] -= math.pi/4 * (od_rods[i]**2) * 0.25
+                pw[subchannels_in_rod[i][j][k]-1] += math.pi * od_rods[i] * 0.25
+
+
+    # creates an array that stores the number of subchannels that belong to the new channel
+    subchannels_in_channel = np.zeros((newchn, dlev, dlev), dtype=int)
+    for i in range(0, newchn):
+        for j in range(0, dlev):
+            for k in range(0, dlev):
+                subchannels_in_channel[i][j][k] = refchannel(i+1, dlev, nchn_side) + j*nchn_side + k
+
+    # defines a function that finds if a subchannel (subch) is contained in a certain new channel that
+    # will contain dlev*dlev subchannels
+
     def findsubchannelinchannel(sub2chan, subch):
         aux = 0
         for i in range(0, newchn):
@@ -396,6 +428,56 @@ def main():
                         aux = i + 1
                         break
         return aux
+
+    # new channel data
+
+    new_an_pw = np.zeros((newchn, 2))
+    new_sizes = np.zeros((newchn, 2))
+    new_loc_channels = np.zeros((newchn, 2))
+    for i in range(0, subchannels_in_channel.shape[0]):
+        aux1 = 0
+        aux2 = 0
+        aux_x = 0
+        aux_y = 0
+        for j in range(0, subchannels_in_channel.shape[1]):
+            for k in range(0,  subchannels_in_channel.shape[2]):
+                aux1 += an[int(subchannels_in_channel[i][j][k])-1]
+                aux2 += pw[int(subchannels_in_channel[i][j][k])-1]
+                if j == 0:
+                    aux_x += xsiz[int(subchannels_in_channel[i][j][k])-1]
+                if k == 0:
+                    aux_y += ysiz[int(subchannels_in_channel[i][j][k])-1]
+
+        new_an_pw[i][0] = aux1
+        new_an_pw[i][1] = aux2
+        new_sizes[i][0] = aux_x
+        new_sizes[i][1] = aux_y
+        if i == 0:
+            new_loc_channels[0][0] = -bp/2 + new_sizes[0][0]/2
+            new_loc_channels[0][1] = bp/2 - new_sizes[0][1]/2
+        else:
+            if ((i-1) // nchn_side) == (i // nchn_side):
+                new_loc_channels[i][0] = new_loc_channels[i-1][0] + (new_sizes[i-1][0] + new_sizes[i][0])/2
+                new_loc_channels[i][1] = new_loc_channels[i-1][1]
+            else:
+                new_loc_channels[i][0] = new_loc_channels[i-nchn_side][0]
+                new_loc_channels[i][1] = new_loc_channels[i-nchn_side][1] - (new_sizes[i-nchn_side][1]+new_sizes[i][1])/2
+
+
+    # creates data for the new channels
+    channelsindextot = np.zeros(newchn_tot, dtype=int)
+    for i in range(0, newchn_tot):
+        channelsindextot[i] = (i+1)
+
+    totchannelsxpos = np.zeros(newchn_tot, dtype=np.float64)
+    totchannelsypos = np.zeros(newchn_tot, dtype=np.float64)
+
+    for i in range(0, newchn_tot):
+        index = i % newchn
+        nfa = i // newchn
+
+
+
 
     print(fa_num)
     print(fa_types)
@@ -413,14 +495,21 @@ def main():
     if ngt > 0:
         print(gtpos)
 
-
-    print(fa_connect)
-    print(core_map)
-    print(fa_transl)
-    print(fa_numcol)
-    print(ret_FA(2, 2))
+    # print(fa_connect)
+    # print(core_map)
+    # print(fa_transl)
+    # print(fa_numcol)
+    # print(ret_FA(2, 2))
+    print(od_rods)
+    print(an)
+    print(pw)
+    print(sum(an))
+    print(sum(pw))
+    print(subchannels_in_channel)
+    print(channelsindextot)
 
     # Create the new file and write lines in it
+
     file = open('new_deck.inp', 'w')
     file.writelines(lines)
     file.close()
