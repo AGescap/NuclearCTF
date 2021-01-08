@@ -192,6 +192,7 @@ def main():
     # new number of channels in the new, homogenized bundle
 
     newchn = int(nchn/(dlev**2))
+    newchn_side = int(nchn_side/dlev)
     newchn_tot = fa_num*newchn
 
     # gets bundle pitch and converts it into m
@@ -472,9 +473,53 @@ def main():
     totchannelsxpos = np.zeros(newchn_tot, dtype=np.float64)
     totchannelsypos = np.zeros(newchn_tot, dtype=np.float64)
 
+    assemb_in_row = np.zeros(fa_numrow, dtype=int)
+    acum_assemb_in_row = np.zeros(fa_numrow, dtype=int)
+    newchn_in_core_row = np.zeros(fa_numrow, dtype=int)
+    acum_newchn_in_core_row = np.zeros(fa_numrow, dtype=int)
+    newchn_in_fa_row = np.zeros(fa_numrow, dtype=int)
+    acum_newchn_in_fa_row = np.zeros(fa_numrow, dtype=int)
+
+    for i in range(0, fa_numrow):
+        auxvar = 0
+        for j in range(0, fa_numcol):
+            if core_map[i][j] != 0:
+                auxvar += 1
+
+        assemb_in_row[i] = auxvar
+        newchn_in_core_row[i] = auxvar * newchn_side
+        newchn_in_fa_row[i] = auxvar * newchn
+
+        if i == 0:
+
+            acum_assemb_in_row[i] = assemb_in_row[i]
+            acum_newchn_in_core_row[i] = newchn_in_core_row[i]
+            acum_newchn_in_fa_row[i] = newchn_in_fa_row[i]
+
+        else:
+            acum_assemb_in_row[i] = acum_assemb_in_row[i-1] + assemb_in_row[i]
+            acum_newchn_in_core_row[i] = acum_newchn_in_core_row[i-1] + newchn_in_core_row[i]
+            acum_newchn_in_fa_row[i] = acum_newchn_in_fa_row[i-1] + newchn_in_fa_row[i]
+
+
     for i in range(0, newchn_tot):
-        index = i % newchn
-        nfa = i // newchn
+
+        # TODO some lines should be added here so as to change the channel data depending on the type of the fa
+        auxrow = 1
+        for j in range(1, fa_numrow):
+            if i+1 > acum_newchn_in_fa_row[j-1] and i+1 <=  acum_newchn_in_fa_row[j]:
+                auxrow = j+1
+
+        if auxrow == 0:
+            chanreset = i + 1
+
+        else:
+            chanreset = i + 1 - acum_newchn_in_fa_row[auxrow-2]
+
+
+        aux_fa = (i // newchn) + 1  # number of the FA #WRONG
+        auxtype = fa_types[aux_fa - 1]
+
 
 
 
@@ -487,27 +532,21 @@ def main():
     print(nrods_side)
     print(nchn)
     print(nchn_side)
+    print(newchn)
     print(pp)
     print(bp)
-    print(fa_cent[1][1])
     print(core_map)
 
     if ngt > 0:
         print(gtpos)
 
-    # print(fa_connect)
-    # print(core_map)
-    # print(fa_transl)
-    # print(fa_numcol)
-    # print(ret_FA(2, 2))
-    print(od_rods)
-    print(an)
-    print(pw)
-    print(sum(an))
-    print(sum(pw))
-    print(subchannels_in_channel)
-    print(channelsindextot)
-
+    print(newchn_in_core_row)
+    print(newchn_in_fa_row)
+    print(acum_assemb_in_row)
+    print(acum_newchn_in_fa_row)
+    print(acum_newchn_in_core_row)
+    print(core_map)
+    print(fa_types)
     # Create the new file and write lines in it
 
     file = open('new_deck.inp', 'w')
