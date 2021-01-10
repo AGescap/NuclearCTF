@@ -194,6 +194,7 @@ def main():
     newchn = int(nchn/(dlev**2))
     newchn_side = int(nchn_side/dlev)
     newchn_tot = fa_num*newchn
+    newnrod_tot = newchn_tot
 
     # gets bundle pitch and converts it into m
 
@@ -326,10 +327,10 @@ def main():
         od_s[0] = fr_od
         od_s[1] = gt_od
 
-    print(rodtype)
+    # print(rodtype)
     od_rods = fr_od*np.ones(nrods, dtype=float)
-    print(ngt)
-    print(od_s)
+    # print(ngt)
+    # print(od_s)
     if ngt > 0:
         for i in range(0, nrods):
             od_rods[i] = od_s[rodtype[i]]
@@ -435,6 +436,7 @@ def main():
     new_an_pw = np.zeros((newchn, 2))
     new_sizes = np.zeros((newchn, 2))
     new_loc_channels = np.zeros((newchn, 2))
+
     for i in range(0, subchannels_in_channel.shape[0]):
         aux1 = 0
         aux2 = 0
@@ -480,6 +482,16 @@ def main():
     newchn_in_fa_row = np.zeros(fa_numrow, dtype=int)
     acum_newchn_in_fa_row = np.zeros(fa_numrow, dtype=int)
 
+    #defines the magnitudes for the Card 2 to be edited and written
+
+    card2_chan = np.zeros(newchn_tot, dtype=int)
+    card2_an = np.zeros(newchn_tot, dtype=np.float64)
+    card2_pw = np.zeros(newchn_tot, dtype=np.float64)
+    card2_X = np.zeros(newchn_tot, dtype=np.float64)
+    card2_Y = np.zeros(newchn_tot, dtype=np.float64)
+    card2_XSIZ = np.zeros(newchn_tot, dtype=np.float64)
+    card2_YSIZ = np.zeros(newchn_tot, dtype=np.float64)
+
     for i in range(0, fa_numrow):
         auxvar = 0
         for j in range(0, fa_numcol):
@@ -501,53 +513,102 @@ def main():
             acum_newchn_in_core_row[i] = acum_newchn_in_core_row[i-1] + newchn_in_core_row[i]
             acum_newchn_in_fa_row[i] = acum_newchn_in_fa_row[i-1] + newchn_in_fa_row[i]
 
-
     for i in range(0, newchn_tot):
-
+        print(i)
+        card2_chan[i] = i+1
         # TODO some lines should be added here so as to change the channel data depending on the type of the fa
         auxrow = 1
+
         for j in range(1, fa_numrow):
             if i+1 > acum_newchn_in_fa_row[j-1] and i+1 <=  acum_newchn_in_fa_row[j]:
                 auxrow = j+1
 
-        if auxrow == 0:
+            else:
+                if i + 1 <= acum_newchn_in_fa_row[0]:
+                    auxrow = 1
+
+        if auxrow == 1:
             chanreset = i + 1
 
         else:
             chanreset = i + 1 - acum_newchn_in_fa_row[auxrow-2]
 
+        auxrow2 = ((chanreset - 1) // newchn_in_core_row[auxrow - 1]) + 1
+        chanreset2 = chanreset - newchn_in_core_row[auxrow - 1] * (auxrow2 - 1)
+        aux_fa = int(((chanreset2 - 1) // newchn_side) + 1)
+        chanreset3 = chanreset2 - (aux_fa - 1) * newchn_side
+        # aux_fatype = core_map[auxrow - 1][aux_fa - 1]
+        index_in_fa = chanreset3 + (auxrow2 - 1) * newchn_side
+        card2_an[i] = new_an_pw[index_in_fa - 1][0]
+        card2_pw[i] = new_an_pw[index_in_fa - 1][1]
+        card2_XSIZ[i] = new_sizes[index_in_fa - 1][0]
+        card2_YSIZ[i] = new_sizes[index_in_fa - 1][1]
 
-        aux_fa = (i // newchn) + 1  # number of the FA #WRONG
-        auxtype = fa_types[aux_fa - 1]
+        if auxrow == 1:
+            card2_X[i] = new_loc_channels[index_in_fa - 1][0] + fa_cent[aux_fa - 1][0]
+            card2_Y[i] = new_loc_channels[index_in_fa - 1][1] + fa_cent[aux_fa - 1][1]
+
+        else:
+            card2_X[i] = new_loc_channels[index_in_fa - 1][0] + fa_cent[acum_assemb_in_row[auxrow - 2] + aux_fa - 1][
+                0]
+            card2_Y[i] = new_loc_channels[index_in_fa - 1][1] + fa_cent[acum_assemb_in_row[auxrow - 2] + aux_fa - 1][
+                1]
 
 
+    # sets a new origin in the numeration for the channels
 
-
-
-    print(fa_num)
-    print(fa_types)
-    print(fa_numcol)
-    print(fa_numrow)
-    print(nrods)
-    print(nrods_side)
-    print(nchn)
-    print(nchn_side)
-    print(newchn)
-    print(pp)
-    print(bp)
-    print(core_map)
+    # print(fa_num)
+    # print(fa_types)
+    # print(fa_numcol)
+    # print(fa_numrow)
+    # print(nrods)
+    # print(nrods_side)
+    # print(nchn)
+    # print(nchn_side)
+    # print(newchn)
+    # print(pp)
+    # print(bp)
+    # print(core_map)
 
     if ngt > 0:
         print(gtpos)
 
-    print(newchn_in_core_row)
-    print(newchn_in_fa_row)
-    print(acum_assemb_in_row)
-    print(acum_newchn_in_fa_row)
-    print(acum_newchn_in_core_row)
-    print(core_map)
-    print(fa_types)
+    # print(newchn_in_core_row)
+    # print(newchn_in_fa_row)
+    # print(acum_assemb_in_row)
+    # print(acum_newchn_in_fa_row)
+    # print(acum_newchn_in_core_row)
+    # print(core_map)
+    # print(fa_types)
+    # print(fa_cent)
     # Create the new file and write lines in it
+
+    # ------------------------WRITING--------------------------------------------------- #
+
+    # Substitutes the number of channels in Group 2
+
+    line_aux = lines[findheaderinline(lines, "NCH NDM2") + 1].split()
+    line_aux[0] = str(newchn_tot)
+    line_aux = '     ' + '    '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
+    lines[findheaderinline(lines, "NCH NDM2") + 1] = line_aux  # stores the modified line into its position
+
+    # Deletes the excess of lines in Card 2.2
+
+    removeexcesslines(lines, findheaderinline(lines, "I AN PW", time=1), nchn, newchn_tot)
+
+    # Edits Card 2.2 lines
+
+    for i in range(0, newchn_tot):
+        line_aux = lines[findheaderinline(lines, "I AN PW", time=1) + 1 + i].split()
+        line_aux[0] = str(i + 1)
+        line_aux[1] = format_e(card2_an[i])
+        line_aux[2] = format_e(card2_pw[i])
+        line_aux[6] = format_e(card2_X[i])
+        line_aux[7] = format_e(card2_Y[i])
+        line_aux[8] = format_e(card2_XSIZ[i])
+        line_aux[9] = format_e(card2_YSIZ[i])
+        line_aux = '     ' + '   '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
+        lines[findheaderinline(lines, "I AN PW", time=1) + 1 + i] = line_aux  # stores the modified line
 
     file = open('new_deck.inp', 'w')
     file.writelines(lines)
