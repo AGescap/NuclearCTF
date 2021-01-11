@@ -316,6 +316,7 @@ def main():
 
     # creates a list which stores all the necessary info about gaps in subchannel. First there is number K of gap,
     # Second, there is the initial channel. Third, the final channel. Fourth, the length of the channel
+    
     gap_data = [[0] * 6 for _ in range(ngaps)]
     for i in range(0, ngaps):
         gap_data[i][0] = int(lines[findheaderinline(lines, "K IK JK") + 3+2*i].split()[0])
@@ -389,6 +390,7 @@ def main():
     removeexcesslines(lines, findheaderinline(lines, "CDL J CD1", time=1), ncd, new_ncd)
 
     # Creates new card
+    
     lines_per_grid = int(new_ncd / ngrids)
     for i in range(0, new_ncd):
         line_aux = lines[findheaderinline(lines, "CDL J CD1", time=1) + 1 + i].split()
@@ -427,7 +429,7 @@ def main():
 
     removeexcesslines(lines, findheaderinline(lines, "N IFTY IAXP", time=1), 2 + 2 * nrods, 2 + 2 * new_chn)
 
-    # Changes NRT1
+    # Changes NRT1 in Card 8.6
 
     line_aux = lines[findheaderinline(lines, "NRT1 NST1", time=1) + 1].split()
     line_aux[1] = str(new_chn)
@@ -704,6 +706,7 @@ def main():
         lines[findheaderinline(lines, "NSCH PIE") + 2 + 2 * i] = line_aux1
 
     # Rewrite the radial profile
+
     lines_rp = ((new_rods - 1) // 8) + 1
     for i in range(0, lines_rp):
         if i != lines_rp - 1:
