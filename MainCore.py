@@ -610,6 +610,33 @@ def main():
         line_aux = '     ' + '   '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
         lines[findheaderinline(lines, "I AN PW", time=1) + 1 + i] = line_aux  # stores the modified line
 
+    # Changes NRRD in Card 8.1
+
+    line_aux = lines[findheaderinline(lines, "NRRD NSRD", time=1) + 1].split()
+    line_aux[0] = str(newnrod_tot)
+    line_aux = '     ' + '    '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "NRRD NSRD", time=1) + 1] = line_aux
+
+    # Changes NRT1 in Card 8.6
+
+    line_aux = lines[findheaderinline(lines, "NRT1 NST1", time=1) + 1].split()
+    line_aux[1] = str(newnrod_tot)
+    line_aux = '     ' + '    '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
+    lines[findheaderinline(lines, "NRT1 NST1", time=1) + 1] = line_aux  # stores the modified line into its position
+
+    # Deletes excess of lines in Card 8.7
+
+    removeexcesslines(lines, findheaderinline(lines, "IRTB1 IRTB2"), ((nrods - 1) // 12) + 1, ((newnrod_tot - 1) // 12) + 1)
+    if newnrod_tot % 12 != 0:
+        line_aux = lines[findheaderinline(lines, "IRTB1 IRTB2", time=1) + ((newnrod_tot - 1) // 12) + 1].split()
+        for i in range(0, 12 - (newnrod_tot % 12)):
+            line_aux[-i - 1] = "  "
+
+        line_aux = '     ' + '     '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
+        lines[findheaderinline(lines, "IRTB1 IRTB2", time=1) + ((newnrod_tot - 1) // 12) + 1] = line_aux
+
+    # ---------------------------------------END OF MAIN--------------------------------------------------
+
     file = open('new_deck.inp', 'w')
     file.writelines(lines)
     file.close()
