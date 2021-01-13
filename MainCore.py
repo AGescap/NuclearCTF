@@ -573,6 +573,10 @@ def main():
     if ngt > 0:
         print(gtpos)
 
+    # creates TOTRODSROW TOTRODSCOL TOTCHANSROW TOTCHANSCOL
+    totrodsrow = fa_numrow * newchn_side
+    totrodscol = fa_numcol * newchn_side
+
     # print(newchn_in_core_row)
     # print(newchn_in_fa_row)
     # print(acum_assemb_in_row)
@@ -635,6 +639,21 @@ def main():
         line_aux = '     ' + '     '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
         lines[findheaderinline(lines, "IRTB1 IRTB2", time=1) + ((newnrod_tot - 1) // 12) + 1] = line_aux
 
+    # Changes the rod map dimensions in Card 17.2
+
+    line_aux = lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL", time=1) + 1].split()
+    line_aux[0], line_aux[1] = str(totrodsrow), str(totrodscol)
+    line_aux = '     ' + '   '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL", time=1) + 1] = line_aux
+
+    # Changes the channel map dimensions in Card 17.3
+
+    line_aux = lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL", time=1) + 1].split()
+    line_aux[0], line_aux[1] = str(totrodsrow), str(totrodscol)
+    line_aux = '     ' + '   '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL", time=1) + 1] = line_aux
+
+    # Deletes previous rod maps and channel maps
     # ---------------------------------------END OF MAIN--------------------------------------------------
 
     file = open('new_deck.inp', 'w')
