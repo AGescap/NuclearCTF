@@ -165,8 +165,8 @@ def main():
     nchn_side = int(np.sqrt(nchn))
     D_lev = 2
     if nchn_side%D_lev != 0:
-       print("ERROR: The original number of channels per side is not divisible by Dlev: " + str(D_lev) + "\n")
-       sys.exit(1)
+        print("ERROR: The original number of channels per side is not divisible by Dlev: " + str(D_lev) + "\n")
+        sys.exit(1)
     anom = []
     pw = []
     xsiz = []
@@ -454,18 +454,16 @@ def main():
     line_aux = '     ' + '    '.join(line_aux) + '\n'
     lines[findheaderinline(lines, "NFLT IRLF", time=1) + 1] = line_aux
 
-    # Deletes Card 9.6 and 9.7
-
-    start = findheaderinline(lines, "Card 9.6")-1
-    n_oldlines = findnextto(lines, "Card 9.6", "********") - start - 1
-    removeexcesslines(lines, start, n_oldlines, 0)
-
-    # Changes NMAT in Card 10.1
-
-    line_aux = lines[findheaderinline(lines, "NMAT NDM2", time=1) + 1].split()
-    line_aux[0] = "1"
-    line_aux = '     ' + '    '.join(line_aux) + '\n'
-    lines[findheaderinline(lines, "NMAT NDM2", time=1) + 1] = line_aux
+    # Deletes Card 9.6 and 9.7 and Changes NMAT in Card 10.1, should there be guide tubes
+    
+    if n_gt > 0:
+        start = findheaderinline(lines, "Card 9.6")-1
+        n_oldlines = findnextto(lines, "Card 9.6", "********") - start - 1
+        removeexcesslines(lines, start, n_oldlines, 0)
+        line_aux = lines[findheaderinline(lines, "NMAT NDM2", time=1) + 1].split()
+        line_aux[0] = "1"
+        line_aux = '     ' + '    '.join(line_aux) + '\n'
+        lines[findheaderinline(lines, "NMAT NDM2", time=1) + 1] = line_aux
 
     # TODO be able to select the exact material table of the rod and delete the rest of them
 
@@ -484,9 +482,8 @@ def main():
 
     line_aux = lines[findheaderinline(lines, "NBND NKBD NFUN", time=1) + 1].split()
     line_aux[0] = str(2*new_chn)
-    line_aux = '     ' + '   '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
-    lines[findheaderinline(lines, "NBND NKBD NFUN", time=1) + 1] = line_aux  # stores the modified line
-    # into its position
+    line_aux = '     ' + '   '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "NBND NKBD NFUN", time=1) + 1] = line_aux
 
     # deletes excess of boundary conditions in card 13.4
     removeexcesslines(lines, findheaderinline(lines, "IBD1 IBD2", time=1), nchn, new_chn)
@@ -524,16 +521,14 @@ def main():
     # Changes the rod map dimensions in Card 17.2
     line_aux = lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL", time=1) + 1].split()
     line_aux[0], line_aux[1] = str(new_chn_side), str(new_chn_side)
-    line_aux = '     ' + '   '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
-    lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL", time=1) + 1] = line_aux  # stores the modified line
-    # into its position
+    line_aux = '     ' + '   '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL", time=1) + 1] = line_aux
 
     # Changes the channel map dimensions in Card 17.3
     line_aux = lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL", time=1) + 1].split()
     line_aux[0], line_aux[1] = str(new_chn_side), str(new_chn_side)
-    line_aux = '     ' + '   '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
-    lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL", time=1) + 1] = line_aux  # stores the modified line
-    # into its position
+    line_aux = '     ' + '   '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL", time=1) + 1] = line_aux
 
     # Deletes excess of lines in rod map and channels map
     removeexcesslines(lines, findcardinline(lines, "Card 17.4 - Rod Map"), nchn_side-1, new_chn_side)
@@ -549,7 +544,6 @@ def main():
     for i in range(0, new_chn_side):
         lines[findcardinline(lines, "Card 17.4 - Rod Map")+1+i] = substitute
         lines[findcardinline(lines, "Card 17.4 - Channel Map")+1+i] = substitute
-
 
     new_an_pw = np.zeros((new_chn, 2))
     new_sizes = np.zeros((new_chn, 2))
@@ -735,7 +729,7 @@ def main():
                 line_aux = '     ' + '   '.join(line_aux) + '\n'
                 lines[findheaderinline(lines, "FQR1 FQR2 FQR3") + 1 + i] = line_aux
 
-    #Create the new file and write lines in it
+    # Create the new file and write lines in it
     file = open('new_deck.inp', 'w')
     file.writelines(lines)
     file.close()
