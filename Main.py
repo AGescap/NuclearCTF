@@ -28,7 +28,7 @@ References:
 def findcardinline(doc, string, time=1):
     # so as to count the iterations. Caution is needed with the string here, because if one types
     # e.g. Card 3.3., it will find both Card 3.3 or Card 3.3.5.
-    # With the variable time, it can now look for the n-th time that the Card appears (like in axial or radial profiles)
+    # With the variable time, it can look for the n-th time that the Card appears (like in axial or radial profiles)
     cont = 0
     locus = -1
     clock = 1
@@ -741,6 +741,7 @@ def main():
     file.close()
 
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
+    # TODO Reorder many chunks of code so that it edits the .inp document in a more structured way
 
 
 main()
