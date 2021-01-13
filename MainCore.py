@@ -177,6 +177,10 @@ def main():
 
     ngt = int(l_assem[findheaderinline(l_assem, "Number of guide tubes/water rods") + 1].split()[0])
 
+    # gets the old number of channels in the deck.inp
+
+    nchn_tot = int(lines[findheaderinline(lines, "NCH NDM2 NDM3")+1].split()[0])
+
     # total number of rods, rods per side, channels per side, discretization level
 
     nrods = nfrods + ngt
@@ -195,7 +199,8 @@ def main():
     newchn_side = int(nchn_side/dlev)
     newchn_tot = fa_num*newchn
     newnrod_tot = newchn_tot
-
+    newnrod_X = fa_numcol * newchn
+    newnrod_Y = fa_numrow * newchn
     # gets bundle pitch and converts it into m
 
     bp = np.float64(l_assem[findheaderinline(l_assem, "Bundle pitch") + 1].split()[0])
@@ -514,7 +519,6 @@ def main():
             acum_newchn_in_fa_row[i] = acum_newchn_in_fa_row[i-1] + newchn_in_fa_row[i]
 
     for i in range(0, newchn_tot):
-        print(i)
         card2_chan[i] = i+1
         # TODO some lines should be added here so as to change the channel data depending on the type of the fa
         auxrow = 1
@@ -554,7 +558,6 @@ def main():
             card2_Y[i] = new_loc_channels[index_in_fa - 1][1] + fa_cent[acum_assemb_in_row[auxrow - 2] + aux_fa - 1][
                 1]
 
-
     # sets a new origin in the numeration for the channels
 
     # print(fa_num)
@@ -574,8 +577,18 @@ def main():
         print(gtpos)
 
     # creates TOTRODSROW TOTRODSCOL TOTCHANSROW TOTCHANSCOL
-    totrodsrow = fa_numrow * newchn_side
-    totrodscol = fa_numcol * newchn_side
+
+    totrodsrow_n = fa_numrow * newchn_side
+    totrodscol_n = fa_numcol * newchn_side
+    totchansrow_n = totrodsrow_n
+    totchanscol_n = totrodscol_n
+    linaux = lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL") + 1].split()
+    totrodsrow_o = int(linaux[0])
+    totrodscol_o = int(linaux[1])
+    linaux = lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL") + 1].split()
+    totchansrow_o = int(linaux[0])
+    totchanscol_o = int(linaux[1])
+
 
     # print(newchn_in_core_row)
     # print(newchn_in_fa_row)
@@ -585,7 +598,24 @@ def main():
     # print(core_map)
     # print(fa_types)
     # print(fa_cent)
-    # Create the new file and write lines in it
+
+    # gets NK - the number of gaps - from Card 3.1. Calculates the new number of gaps
+
+    ngaps_tot = int(lines[findheaderinline(lines, "NK NDM2 NDM3") + 1].split()[0])
+    newngaps_tot = int((newnrod_X-1) * newnrod_Y + newnrod_X * (newnrod_Y - 1))
+
+    # gets NONO variable and calculate new MSIM from Card 4.2
+
+    nono = int(lines[findheaderinline(lines, "NCHN NONO")+1].split()[2])
+    new_msim = nono*newchn_tot
+
+    # Reads NCD in Card 7.1, gets the different CDL and J positions in Card 7.2
+
+    ncd = int(lines[findheaderinline(lines, "NCD NGT") + 1].split()[0])
+    ngrids = int(ncd / ((nchn_tot + 1) // 12))
+    grid_cdl = np.zeros((ngrids, 1), dtype=float)
+    grid_j = np.zeros((ngrids, 1), dtype=int)
+    new_ncd = ngrids * (((newchn_tot - 1) // 12) + 1)
 
     # ------------------------WRITING--------------------------------------------------- #
 
@@ -611,8 +641,92 @@ def main():
         line_aux[7] = format_e(card2_Y[i])
         line_aux[8] = format_e(card2_XSIZ[i])
         line_aux[9] = format_e(card2_YSIZ[i])
-        line_aux = '     ' + '   '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
-        lines[findheaderinline(lines, "I AN PW", time=1) + 1 + i] = line_aux  # stores the modified line
+        line_aux = '     ' + '   '.join(line_aux) + '\n'
+        lines[findheaderinline(lines, "I AN PW", time=1) + 1 + i] = line_aux
+
+    # Changes the number of gaps in Card 3.1
+
+    line_aux = lines[findheaderinline(lines, "NK NDM2") + 1].split()
+    line_aux[0] = str(newngaps_tot)
+    line_aux = '     ' + '    '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "NK NDM2") + 1] = line_aux
+
+    # Deletes excess of gaps in Card 3.3
+
+    removeexcesslines(lines, findheaderinline(lines, "K IK JK", time=1), 2+2*ngaps_tot, 2+2*newngaps_tot)
+
+    # Deletes excess of gaps in Card 3.3.5
+
+    removeexcesslines(lines, findheaderinline(lines, "K X Y NORM", time=1), ngaps_tot, newngaps_tot)
+
+    # Deletes excess lines in Card 4.4
+
+    removeexcesslines(lines, findheaderinline(lines, "KCHA KCHA", time=1), nchn_tot, newchn_tot)
+
+    # Changes IWDE in Card 4.5
+
+    line_aux = lines[findheaderinline(lines, "IWDE") + 1].split()
+    line_aux[0] = str(newchn_tot)
+    line_aux = '     ' + '    '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "IWDE") + 1] = line_aux
+
+    # Changes MSIM in Card 4.6
+
+    line_aux = lines[findheaderinline(lines, "MSIM") + 1].split()
+    line_aux[0] = str(new_msim)
+    line_aux = '     ' + '    '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "MSIM") + 1] = line_aux
+
+    # Substitutes NCD in Card 7.1. Creates the new values to store in Card 7.2
+
+    line_aux = lines[findheaderinline(lines, "NCD NGT") + 1].split()
+    line_aux[0] = str(new_ncd)
+    line_aux = '     ' + '    '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "NCD NGT") + 1] = line_aux
+    clock = int(0)
+
+    for i in range(0, ncd):
+        if i == 0:
+            grid_cdl[0] = float(lines[findheaderinline(lines, "CDL J") + 1].split()[0])
+            grid_j[0] = int(lines[findheaderinline(lines, "CDL J") + 1].split()[1])
+
+        else:
+            if int(lines[findheaderinline(lines, "CDL J") + 1 + i].split()[1]) != grid_j[clock] and clock < ngrids - 1:
+                grid_cdl[clock + 1] = float(lines[findheaderinline(lines, "CDL J") + 1 + i].split()[0])
+                grid_j[clock + 1] = int(lines[findheaderinline(lines, "CDL J") + 1 + i].split()[1])
+                clock = clock + 1
+
+    # Removes excessive lines in Card 7.2
+
+    removeexcesslines(lines, findheaderinline(lines, "CDL J CD1", time=1), ncd, new_ncd)
+
+    # Gives new values in Card 7.2 and re-writes it
+
+    lines_per_grid = int(new_ncd / ngrids)
+    for i in range(0, new_ncd):
+        line_aux = lines[findheaderinline(lines, "CDL J CD1", time=1) + 1 + i].split()
+        line_aux[0] = str(float(grid_cdl[i // lines_per_grid]))
+        line_aux[1] = str(int(grid_j[i // lines_per_grid]))
+        line_aux[2] = str(12 * (i % lines_per_grid) + 1)
+        line_aux[3] = str(12 * (i % lines_per_grid) + 2)
+        line_aux[4] = str(12 * (i % lines_per_grid) + 3)
+        line_aux[5] = str(12 * (i % lines_per_grid) + 4)
+        line_aux[6] = str(12 * (i % lines_per_grid) + 5)
+        line_aux[7] = str(12 * (i % lines_per_grid) + 6)
+        line_aux[8] = str(12 * (i % lines_per_grid) + 7)
+        line_aux[9] = str(12 * (i % lines_per_grid) + 8)
+        line_aux[10] = str(12 * (i % lines_per_grid) + 9)
+        line_aux[11] = str(12 * (i % lines_per_grid) + 10)
+        line_aux[12] = str(12 * (i % lines_per_grid) + 11)
+        line_aux[13] = str(12 * (i % lines_per_grid) + 12)
+        if newchn_tot % 12 != 0:
+            if (i + 1) % lines_per_grid == 0:
+                for j in range(0, 12 - (newchn_tot % 12)):
+                    line_aux[-1 - j] = str(0)
+        line_aux = '     ' + '    '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
+        lines[findheaderinline(lines, "CDL J CD1", time=1) + 1 + i] = line_aux  # stores the modified line
+
+        # into its position
 
     # Changes NRRD in Card 8.1
 
@@ -630,7 +744,8 @@ def main():
 
     # Deletes excess of lines in Card 8.7
 
-    removeexcesslines(lines, findheaderinline(lines, "IRTB1 IRTB2"), ((nrods - 1) // 12) + 1, ((newnrod_tot - 1) // 12) + 1)
+    removeexcesslines(lines, findheaderinline(lines, "IRTB1 IRTB2"), ((nrods - 1) // 12) + 1,
+                      ((newnrod_tot - 1) // 12) + 1)
     if newnrod_tot % 12 != 0:
         line_aux = lines[findheaderinline(lines, "IRTB1 IRTB2", time=1) + ((newnrod_tot - 1) // 12) + 1].split()
         for i in range(0, 12 - (newnrod_tot % 12)):
@@ -639,27 +754,76 @@ def main():
         line_aux = '     ' + '     '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
         lines[findheaderinline(lines, "IRTB1 IRTB2", time=1) + ((newnrod_tot - 1) // 12) + 1] = line_aux
 
+    # Deletes Card 9.6 and 9.7
+
+    if ngt > 0:
+        start = findheaderinline(lines, "Card 9.6")-1
+        n_oldlines = findnextto(lines, "Card 9.6", "********") - start - 1
+        removeexcesslines(lines, start, n_oldlines, 0)
+
+    # Changes NMAT in Card 10.1
+
+    if ngt > 0:
+        line_aux = lines[findheaderinline(lines, "NMAT NDM2", time=1) + 1].split()
+        line_aux[0] = "1"
+        line_aux = '     ' + '    '.join(line_aux) + '\n'
+        lines[findheaderinline(lines, "NMAT NDM2", time=1) + 1] = line_aux
+
+    # Changes NAXP in Card 11.1
+
+    line_aux = lines[findheaderinline(lines, "NQA NAXP MNXN", time=1) + 1].split()
+    line_aux[1] = str(1)
+    line_aux = '     ' + '   '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
+    lines[findheaderinline(lines, "NQA NAXP MNXN",
+                           time=1) + 1] = line_aux  # stores the modified line into its position
+
+    # Deletes second axial profile (repeated Cards 11.3 and 11.4, that is included when there exist guide tubes.
+    # In future versions this could be linked to the number of axial profiles left.
+
+    if ngt > 0:
+        deletebetweencards(lines, "Card 11.3", "Card 11.7", 2)
+
+    # Changes number of boundary conditions in Card 13.1
+
+    line_aux = lines[findheaderinline(lines, "NBND NKBD NFUN", time=1) + 1].split()
+    line_aux[0] = str(2*newchn_tot)
+    line_aux = '     ' + '   '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "NBND NKBD NFUN", time=1) + 1] = line_aux
+
+    # deletes excess of boundary conditions in card 13.4
+
+    removeexcesslines(lines, findheaderinline(lines, "IBD1 IBD2", time=1), nchn_tot, newchn_tot)
+    removeexcesslines(lines, findheaderinline(lines, "outlet b.c.", time=1), nchn_tot, newchn_tot)
+
     # Changes the rod map dimensions in Card 17.2
 
     line_aux = lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL", time=1) + 1].split()
-    line_aux[0], line_aux[1] = str(totrodsrow), str(totrodscol)
+    line_aux[0], line_aux[1] = str(totrodsrow_n), str(totrodscol_n)
     line_aux = '     ' + '   '.join(line_aux) + '\n'
     lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL", time=1) + 1] = line_aux
 
     # Changes the channel map dimensions in Card 17.3
 
     line_aux = lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL", time=1) + 1].split()
-    line_aux[0], line_aux[1] = str(totrodsrow), str(totrodscol)
+    line_aux[0], line_aux[1] = str(totchansrow_n), str(totchanscol_n)
     line_aux = '     ' + '   '.join(line_aux) + '\n'
     lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL", time=1) + 1] = line_aux
 
     # Deletes previous rod maps and channel maps
+
+    removeexcesslines(lines, findcardinline(lines, "Card 17.4 - Rod Map"), totrodsrow_o, totrodsrow_n)
+    removeexcesslines(lines, findcardinline(lines, "Card 17.4 - Channel Map"), totchansrow_o, totchansrow_n)
+
+    # TODO remake the new core map
+
     # ---------------------------------------END OF MAIN--------------------------------------------------
 
     file = open('new_deck.inp', 'w')
     file.writelines(lines)
     file.close()
 
+    print(fa_numcol)
+    print(newchn_side)
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
 
