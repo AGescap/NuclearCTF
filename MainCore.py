@@ -283,6 +283,7 @@ def main():
     # conectivity of the different subchannels
 
     fa_connect = np.zeros((fa_num, 2), dtype=int)
+    num_sides_connect = int(0)
     # a matrix that stores two values for every fuel assembly. First component is valued 1 if there is another
     # FA just rightwards and valued 0 if not. The same for the second component but it checks if there is a FA
     # just downwards
@@ -314,6 +315,8 @@ def main():
             else:
                 if core_map[auxvar[0]][auxvar[1] - 1] != 0:
                     fa_connect[i][1] = 1
+
+        num_sides_connect = num_sides_connect + fa_connect[i][0] + fa_connect[i][1]
 
     # local parameters in a FA
     free_sp = (bp - (nrods_side-1)*pp)/2
@@ -576,7 +579,12 @@ def main():
     # gets NK - the number of gaps - from Card 3.1. Calculates the new number of gaps
 
     ngaps_tot = int(lines[findheaderinline(lines, "NK NDM2 NDM3") + 1].split()[0])
-    newngaps_tot = int((totrodscol_n-1) * totrodsrow_n + totrodscol_n * (totrodsrow_n - 1))
+    inner_gaps_in_fa = 2 * (newchn_side * (newchn_side-1))
+    newngaps_tot = int((totrodscol_n-1) * totrodsrow_n + totrodscol_n * (totrodsrow_n - 1)) + inner_gaps_in_fa * fa_num
+
+    # Creates gap data
+
+    new_gap_data = [[0] * 8 for _ in range(newngaps_tot)]
 
     # gets NONO variable and calculate new MSIM from Card 4.2
 
@@ -718,10 +726,8 @@ def main():
             if (i + 1) % lines_per_grid == 0:
                 for j in range(0, 12 - (newchn_tot % 12)):
                     line_aux[-1 - j] = str(0)
-        line_aux = '     ' + '    '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
-        lines[findheaderinline(lines, "CDL J CD1", time=1) + 1 + i] = line_aux  # stores the modified line
-
-        # into its position
+        line_aux = '     ' + '    '.join(line_aux) + '\n'
+        lines[findheaderinline(lines, "CDL J CD1", time=1) + 1 + i] = line_aux
 
     # Changes NRRD in Card 8.1
 
@@ -832,6 +838,7 @@ def main():
     file.writelines(lines)
     file.close()
 
+    print(num_sides_connect)
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
     # TODO Change the name of the vtk and hdf5 files that are generated (e.g. adding '_DLEV2' before the file extension
