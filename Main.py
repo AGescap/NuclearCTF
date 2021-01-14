@@ -317,6 +317,7 @@ def main():
     # creates a list which stores all the necessary info about gaps in subchannel. First there is number K of gap,
     # Second, there is the initial channel. Third, the final channel. Fourth, the length of the channel
     
+    
     gap_data = [[0] * 6 for _ in range(ngaps)]
     for i in range(0, ngaps):
         gap_data[i][0] = int(lines[findheaderinline(lines, "K IK JK") + 3+2*i].split()[0])
@@ -326,6 +327,8 @@ def main():
         gap_data[i][4] = float(lines[findheaderinline(lines, "K IK JK") + 3 + 2 * i].split()[1])
         gap_data[i][5] = float(lines[findheaderinline(lines, "K X Y NORM") + 1 + i].split()[2])
 
+    # TODO note that gap_data[i][4] is unused. Fix it
+    
     # Deletes excess of gaps in Card 3.3
     removeexcesslines(lines, findheaderinline(lines, "K IK JK", time=1), 2+2*ngaps, 2+2*new_ngaps)
 
@@ -386,11 +389,11 @@ def main():
                 grid_j[clock+1] = int(lines[findheaderinline(lines, "CDL J") + 1 + i].split()[1])
                 clock = clock + 1
                 
-    # Deletes excess lines in card 7.4
+    # Deletes excess lines in Card 7.4
 
     removeexcesslines(lines, findheaderinline(lines, "CDL J CD1", time=1), ncd, new_ncd)
 
-    # Creates new card
+    # Creates new Card 7.4
     
     lines_per_grid = int(new_ncd / ngrids)
     for i in range(0, new_ncd):
@@ -532,7 +535,7 @@ def main():
     line_aux = [namehdf5 + '_dlev' + str(D_lev) + '.hdf5', namevtk + '_dlev' + str(D_lev) + '.vtk']
     line_aux = '     ' + '    '.join(line_aux) + '\n'
     lines[findheaderinline(lines, "HDF5_NAME VTK_NAME") + 1] = line_aux
-    
+
     # Changes the rod map dimensions in Card 17.2
     line_aux = lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL", time=1) + 1].split()
     line_aux[0], line_aux[1] = str(new_chn_side), str(new_chn_side)
@@ -751,7 +754,7 @@ def main():
 
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
     # TODO Reorder many chunks of code so that it edits the .inp document in a more structured way
-
+    print(gap_data)
 
 main()
 
