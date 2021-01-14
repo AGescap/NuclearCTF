@@ -477,9 +477,6 @@ def main():
     for i in range(0, newchn_tot):
         channelsindextot[i] = (i+1)
 
-    totchannelsxpos = np.zeros(newchn_tot, dtype=np.float64)
-    totchannelsypos = np.zeros(newchn_tot, dtype=np.float64)
-
     assemb_in_row = np.zeros(fa_numrow, dtype=int)
     acum_assemb_in_row = np.zeros(fa_numrow, dtype=int)
     newchn_in_core_row = np.zeros(fa_numrow, dtype=int)
@@ -579,14 +576,72 @@ def main():
     # gets NK - the number of gaps - from Card 3.1. Calculates the new number of gaps
 
     ngaps_tot = int(lines[findheaderinline(lines, "NK NDM2 NDM3") + 1].split()[0])
-    inner_gaps_in_fa = 2 * (newchn_side * (newchn_side-1))
+    old_gaps_in_fa = 2 * nchn_side * (nchn_side - 1)
+    inner_gaps_in_fa = 2 * newchn_side * (newchn_side-1)
     newngaps_tot = int((totrodscol_n-1) * totrodsrow_n + totrodscol_n * (totrodsrow_n - 1)) + inner_gaps_in_fa * fa_num
 
-    # Creates gap data
+    # Creates gap data. First it creates gap data for a single assembly (in the future, for every type of assembly)
 
-    new_gap_data = [[0] * 8 for _ in range(newngaps_tot)]
+    coords2 = np.zeros(nchn_side - 1, dtype=np.float64)  #the other possible coordinate is already in coords
+    coords2[0] = - bp / 2 + free_sp
+    coords2[-1] = bp / 2 - free_sp
 
-    # gets NONO variable and calculate new MSIM from Card 4.2
+
+    for i in range(1, nchn_side - 2):
+        coords2[i] =  coords2[i - 1] + pp
+
+    # for i in range(0, new_ngaps):
+    #     new_gap_data[i][0] = int(i+1)
+    #     nrep = 2*new_chn_side-1  # number of gaps alternated
+    #     aux = float(0)
+    #     if i <= new_ngaps - new_chn_side:
+    #         if (i+1) % nrep == 0:
+    #             new_gap_data[i][5] = 'y'
+    #             new_gap_data[i][1] = new_chn_side*((i+1) // nrep)
+    #             new_gap_data[i][2] = new_gap_data[i][1] + new_chn_side
+    #         else:
+    #             if ((i+1) % nrep) % 2 == 1:
+    #                 new_gap_data[i][5] = 'x'
+    #                 new_gap_data[i][1] = ((i+1) // nrep) * new_chn_side + (((i+1) % nrep) // 2) + 1
+    #                 new_gap_data[i][2] = new_gap_data[i][1] + 1
+    #             else:
+    #                 new_gap_data[i][5] = 'y'
+    #                 new_gap_data[i][1] = ((i + 1) // nrep) * new_chn_side + (((i + 1) % nrep) // 2)
+    #                 new_gap_data[i][2] = new_gap_data[i][1] + new_chn_side
+    #
+    #     else:
+    #         new_gap_data[i][5] = 'x'
+    #         new_gap_data[i][1] = (new_chn_side-1)*new_chn_side + ((i + 1) % nrep)
+    #         new_gap_data[i][2] = new_gap_data[i][1] + 1
+    #
+    #     if new_gap_data[i][5] == 'x':
+    #         for j in range(0, D_lev):
+    #             search = subchannels_in_channel[new_gap_data[i][1]-1][j][D_lev - 1]
+    #             aux += gap_data[findthechannelingaps(gap_data, search, time=1) - 1][3]
+    #         new_gap_data[i][4] = new_loc_channels[new_gap_data[i][2]-1][0] - new_loc_channels[new_gap_data[i][1]-1][0]
+    #         new_gap_data[i][6] = new_loc_channels[new_gap_data[i][1]-1][0] + new_sizes[new_gap_data[i][1]-1][0]/2
+    #         if abs(new_gap_data[i][6]) < 1e-6:
+    #             new_gap_data[i][6] = 0.0
+    #         new_gap_data[i][7] = new_loc_channels[new_gap_data[i][1]-1][1]
+    #
+    #     if new_gap_data[i][5] == 'y':
+    #         for j in range(0, D_lev):
+    #             search = subchannels_in_channel[new_gap_data[i][1]-1][D_lev-1][j]
+    #             aux += gap_data[findthechannelingaps(gap_data, search, time=2) - 1][3]
+    #         new_gap_data[i][4] = new_loc_channels[new_gap_data[i][1]-1][1] - new_loc_channels[new_gap_data[i][2]-1][1]
+    #         new_gap_data[i][6] = new_loc_channels[new_gap_data[i][1]-1][0]
+    #         new_gap_data[i][7] = new_loc_channels[new_gap_data[i][1]-1][1] - new_sizes[new_gap_data[i][1]-1][1]/2
+    #         if abs(new_gap_data[i][7]) < 1e-6:
+    #             new_gap_data[i][7] = 0.0
+    #     new_gap_data[i][3] = aux  # stores the GAP magnitude
+
+    old_gap_data = [[0] * 6 for _ in range(old_gaps_in_fa)]
+    fa_gap_data = [[0] * 6 for _ in range(inner_gaps_in_fa)]
+    new_gap_data = [[0] * 6 for _ in range(newngaps_tot)]
+
+    def isgapbetweenassemblies():
+        # gets NONO variable and calculate new MSIM from Card 4.2
+        return 0
 
     nono = int(lines[findheaderinline(lines, "NCHN NONO")+1].split()[2])
     new_msim = nono*newchn_tot
