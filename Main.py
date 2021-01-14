@@ -249,7 +249,7 @@ def main():
     # gets bundle pitch and converts it to m
 
     bundle_pitch = float(lines_assem[findheaderinline(lines_assem, "Bundle pitch") + 1].split()[0])
-    bundle_pitch = bundle_pitch/1000
+    bundle_pitch = bundle_pitch / 1000
 
     # gets gap number in Card 3 and ensure everything is ok
 
@@ -385,6 +385,7 @@ def main():
                 grid_cdl[clock+1] = float(lines[findheaderinline(lines, "CDL J") + 1 + i].split()[0])
                 grid_j[clock+1] = int(lines[findheaderinline(lines, "CDL J") + 1 + i].split()[1])
                 clock = clock + 1
+                
     # Deletes excess lines in card 7.4
 
     removeexcesslines(lines, findheaderinline(lines, "CDL J CD1", time=1), ncd, new_ncd)
@@ -523,6 +524,15 @@ def main():
 
     removeexcesslines(lines, findheaderinline(lines, "FQR1  FQR2", time=1), nrows_lines, nnewrods_lines)
 
+    # Changes names of the .hdf5 and .vtk files generated
+    
+    line_aux = lines[findheaderinline(lines, "HDF5_NAME VTK_NAME") + 1].split()
+    namehdf5 = line_aux[0].split('.')[0]
+    namevtk = line_aux[1].split('.')[0]
+    line_aux = [namehdf5 + '_dlev' + str(D_lev) + '.hdf5', namevtk + '_dlev' + str(D_lev) + '.vtk']
+    line_aux = '     ' + '    '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "HDF5_NAME VTK_NAME") + 1] = line_aux
+    
     # Changes the rod map dimensions in Card 17.2
     line_aux = lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL", time=1) + 1].split()
     line_aux[0], line_aux[1] = str(new_chn_side), str(new_chn_side)

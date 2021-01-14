@@ -583,7 +583,7 @@ def main():
     nono = int(lines[findheaderinline(lines, "NCHN NONO")+1].split()[2])
     new_msim = nono*newchn_tot
 
-    # Reads NCD in Card 7.1, gets the different CDL and J positions in Card 7.2
+    # Reads NCD in Card 7.1, gets the different CDL and J positions from Card 7.2
 
     ncd = int(lines[findheaderinline(lines, "NCD NGT") + 1].split()[0])
     ngrids = int(ncd / ((nchn_tot + 1) // 12))
@@ -591,7 +591,13 @@ def main():
     grid_j = np.zeros((ngrids, 1), dtype=int)
     new_ncd = ngrids * (((newchn_tot - 1) // 12) + 1)
 
-    # gets a map of the full core in card 17.2
+    # gets the name of the .hdf5 and .vtk files from Card 17.1
+
+    line_aux = lines[findheaderinline(lines, "HDF5_NAME VTK_NAME") + 1].split()
+    namehdf5 = line_aux[0].split('.')[0]
+    namevtk = line_aux[1].split('.')[0]
+
+    # gets a map of the full core from card 17.2
 
     newrodsmap = np.zeros((totrodsrow_n, totrodscol_n), dtype=int)
     for i in range(0, totrodsrow_n):
@@ -784,6 +790,12 @@ def main():
     removeexcesslines(lines, findheaderinline(lines, "IBD1 IBD2", time=1), nchn_tot, newchn_tot)
     removeexcesslines(lines, findheaderinline(lines, "outlet b.c.", time=1), nchn_tot, newchn_tot)
 
+    # Changes names of the .hdf5 and .vtk files in Card 17.1
+    
+    line_aux = [namehdf5 + '_dlev' + str(dlev) + '.hdf5', namevtk + '_dlev' + str(dlev) + '.vtk']
+    line_aux = '     ' + '    '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "HDF5_NAME VTK_NAME") + 1] = line_aux
+    
     # Changes the rod map dimensions in Card 17.2
 
     line_aux = lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL", time=1) + 1].split()
