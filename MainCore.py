@@ -199,8 +199,7 @@ def main():
     newchn_side = int(nchn_side/dlev)
     newchn_tot = fa_num*newchn
     newnrod_tot = newchn_tot
-    newnrod_X = fa_numcol * newchn
-    newnrod_Y = fa_numrow * newchn
+
     # gets bundle pitch and converts it into m
 
     bp = np.float64(l_assem[findheaderinline(l_assem, "Bundle pitch") + 1].split()[0])
@@ -251,7 +250,6 @@ def main():
         for j in range(fa_numrow):
             core_cent[j][i][0] = ((i+1) - 0.5 - float(fa_numcol)/2)*bp
             core_cent[j][i][1] = (float(fa_numrow)/2 + 0.5 - (j+1))*bp
-
 
     # this matrix will only contain the center of the FAs
 
@@ -377,14 +375,14 @@ def main():
     for i in range(0, (nchn_side-2)**2):
         chan_center[i] = nchn_side + 2 + i % (nchn_side-2) + nchn_side * (i // (nchn_side-2))
 
-    #gives values to the subchannel data
+    # gives values to the subchannel data
 
     coords[0] = -bp/2 + free_sp/2
     coords[-1] = bp/2 - free_sp/2
     for i in range(1, nchn_side-1):
         coords[i] = -bp/2 + free_sp + pp / 2 + (i-1)*pp
 
-    #edits coordinate data
+    # edits coordinate data
 
     for i in range(0, nchn):
         channX[i] = coords[i % nchn_side]
@@ -414,7 +412,6 @@ def main():
             for k in range(0, 2):
                 an[subchannels_in_rod[i][j][k]-1] -= math.pi/4 * (od_rods[i]**2) * 0.25
                 pw[subchannels_in_rod[i][j][k]-1] += math.pi * od_rods[i] * 0.25
-
 
     # creates an array that stores the number of subchannels that belong to the new channel
     subchannels_in_channel = np.zeros((newchn, dlev, dlev), dtype=int)
@@ -471,8 +468,8 @@ def main():
                 new_loc_channels[i][0] = new_loc_channels[i-nchn_side][0]
                 new_loc_channels[i][1] = new_loc_channels[i-nchn_side][1] - (new_sizes[i-nchn_side][1]+new_sizes[i][1])/2
 
-
     # creates data for the new channels
+
     channelsindextot = np.zeros(newchn_tot, dtype=int)
     for i in range(0, newchn_tot):
         channelsindextot[i] = (i+1)
@@ -487,7 +484,7 @@ def main():
     newchn_in_fa_row = np.zeros(fa_numrow, dtype=int)
     acum_newchn_in_fa_row = np.zeros(fa_numrow, dtype=int)
 
-    #defines the magnitudes for the Card 2 to be edited and written
+    # defines the magnitudes for the Card 2 to be edited and written
 
     card2_chan = np.zeros(newchn_tot, dtype=int)
     card2_an = np.zeros(newchn_tot, dtype=np.float64)
@@ -589,7 +586,6 @@ def main():
     totchansrow_o = int(linaux[0])
     totchanscol_o = int(linaux[1])
 
-
     # print(newchn_in_core_row)
     # print(newchn_in_fa_row)
     # print(acum_assemb_in_row)
@@ -602,7 +598,7 @@ def main():
     # gets NK - the number of gaps - from Card 3.1. Calculates the new number of gaps
 
     ngaps_tot = int(lines[findheaderinline(lines, "NK NDM2 NDM3") + 1].split()[0])
-    newngaps_tot = int((newnrod_X-1) * newnrod_Y + newnrod_X * (newnrod_Y - 1))
+    newngaps_tot = int((totrodscol_n-1) * totrodsrow_n + totrodscol_n * (totrodsrow_n - 1))
 
     # gets NONO variable and calculate new MSIM from Card 4.2
 
@@ -616,6 +612,14 @@ def main():
     grid_cdl = np.zeros((ngrids, 1), dtype=float)
     grid_j = np.zeros((ngrids, 1), dtype=int)
     new_ncd = ngrids * (((newchn_tot - 1) // 12) + 1)
+
+    # gets a map of the full core in card 17.2
+
+    newrodsmap = np.zeros((totrodsrow_n, totrodscol_n), dtype=int)
+    for i in range(0, totrodsrow_n):
+        line_aux = lines[findheaderinline(lines, "Assembly Map") + 1 + (i // newchn_side)].split()
+        for j in range(0, totrodscol_n):
+            newrodsmap[i][j] = int(line_aux[j // newchn_side])
 
     # ------------------------WRITING--------------------------------------------------- #
 
@@ -814,6 +818,15 @@ def main():
     removeexcesslines(lines, findcardinline(lines, "Card 17.4 - Rod Map"), totrodsrow_o, totrodsrow_n)
     removeexcesslines(lines, findcardinline(lines, "Card 17.4 - Channel Map"), totchansrow_o, totchansrow_n)
 
+    for i in range(0, totrodsrow_n):
+        line_aux = []
+        for j in range(0, totrodscol_n):
+            line_aux.append(str(newrodsmap[i][j]))
+
+        line_aux = '     ' + '   '.join(line_aux) + '\n'
+        lines[findheaderinline(lines, "Card 17.4 - Rod Map", time=1) + 1+i] = line_aux
+        lines[findheaderinline(lines, "Card 17.4 - Channel Map", time=1) + 1 + i] = line_aux
+
     # TODO remake the new core map
 
     # ---------------------------------------END OF MAIN--------------------------------------------------
@@ -822,8 +835,7 @@ def main():
     file.writelines(lines)
     file.close()
 
-    print(fa_numcol)
-    print(newchn_side)
+    print(newrodsmap)
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
 
