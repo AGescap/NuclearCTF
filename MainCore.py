@@ -557,19 +557,6 @@ def main():
 
     # sets a new origin in the numeration for the channels
 
-    # print(fa_num)
-    # print(fa_types)
-    # print(fa_numcol)
-    # print(fa_numrow)
-    # print(nrods)
-    # print(nrods_side)
-    # print(nchn)
-    # print(nchn_side)
-    # print(newchn)
-    # print(pp)
-    # print(bp)
-    # print(core_map)
-
     if ngt > 0:
         print(gtpos)
 
@@ -585,15 +572,6 @@ def main():
     linaux = lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL") + 1].split()
     totchansrow_o = int(linaux[0])
     totchanscol_o = int(linaux[1])
-
-    # print(newchn_in_core_row)
-    # print(newchn_in_fa_row)
-    # print(acum_assemb_in_row)
-    # print(acum_newchn_in_fa_row)
-    # print(acum_newchn_in_core_row)
-    # print(core_map)
-    # print(fa_types)
-    # print(fa_cent)
 
     # gets NK - the number of gaps - from Card 3.1. Calculates the new number of gaps
 
@@ -662,6 +640,13 @@ def main():
     # Deletes excess of gaps in Card 3.3.5
 
     removeexcesslines(lines, findheaderinline(lines, "K X Y NORM", time=1), ngaps_tot, newngaps_tot)
+
+    # Changes NCHN in Card 4.2
+
+    line_aux = lines[findheaderinline(lines, "ISEC    NCHN  NONO") + 1].split()
+    line_aux[1] = str(newchn_tot)
+    line_aux = '     ' + '    '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "ISEC    NCHN  NONO") + 1] = line_aux
 
     # Deletes excess lines in Card 4.4
 
@@ -835,10 +820,9 @@ def main():
     file.writelines(lines)
     file.close()
 
-    print(newrodsmap)
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
-
+    # TODO Change the name of the vtk and hdf5 files that are generated (e.g. adding '_DLEV2' before the file extension
 
 main()
 
