@@ -467,6 +467,10 @@ def main():
 
     # TODO be able to select the exact material table of the rod and delete the rest of them
 
+    # Gets old NAXP in Card 11.1
+    
+    naxp_o = int(lines[findheaderinline(lines, "NQA NAXP MNXN", time=1) + 1].split()[1])
+    
     # Changes NAXP in Card 11.1
 
     line_aux = lines[findheaderinline(lines, "NQA NAXP MNXN", time=1) + 1].split()
@@ -476,7 +480,8 @@ def main():
 
     # Deletes second axial profile. In future versions this could be linked to the number of axial profiles left
 
-    deletebetweencards(lines, "Card 11.3", "Card 11.7", 2)
+    if naxp_o > 1:
+        deletebetweencards(lines, "Card 11.3", "Card 11.7", 2)
 
     # Changes number of boundary conditions in Card 13.1
 
