@@ -344,13 +344,20 @@ def main():
     # creates an array with the subchannels that correspond to a rod
 
     subchannels_in_rod = np.zeros((nrods, 2, 2), dtype=int)
-
+    rods_for_subchannel = np.zeros((nchn, 2, 2), dtype=int)
+    contvect = np.zeros(nchn, dtype=int)
     for i in range(0, nrods):
         top = i+1 + i//(nchn_side-1)
         subchannels_in_rod[i][0][0] = top
         subchannels_in_rod[i][0][1] = top + 1
         subchannels_in_rod[i][1][0] = top + nchn_side
         subchannels_in_rod[i][1][1] = top + nchn_side+1
+
+    for i in range(0, nrods):
+        for j in range(0, 2):
+            for k in range(0, 2):
+                rods_for_subchannel[subchannels_in_rod[i][j][k] - 1][1-j][1-k] = i + 1
+
 
     # creates a matrix to store the data of the subchannels, so they can be merged afterwards
 
@@ -582,13 +589,25 @@ def main():
 
     # Creates gap data. First it creates gap data for a single assembly (in the future, for every type of assembly)
 
-    coords2 = np.zeros(nchn_side - 1, dtype=np.float64)  #the other possible coordinate is already in coords
+    def findthechannelingaps(vgaps, val, time=1):
+        # finds the first channel with number of channel val in the vector of gaps and returns the number of gap
+        aux = 0
+        clock = 1
+        for i in range(0, old_gaps_in_fa):
+            if vgaps[i][1] == val:
+                if clock < time:
+                    clock = clock +1
+                else:
+                    aux = i+1
+                    break
+        return aux
+
+    coords2 = np.zeros(nchn_side - 1, dtype=np.float64)  # the other possible coordinate is already in coords
     coords2[0] = - bp / 2 + free_sp
     coords2[-1] = bp / 2 - free_sp
 
-
     for i in range(1, nchn_side - 2):
-        coords2[i] =  coords2[i - 1] + pp
+        coords2[i] = coords2[i - 1] + pp
 
     # for i in range(0, new_ngaps):
     #     new_gap_data[i][0] = int(i+1)
@@ -635,9 +654,33 @@ def main():
     #             new_gap_data[i][7] = 0.0
     #     new_gap_data[i][3] = aux  # stores the GAP magnitude
 
-    old_gap_data = [[0] * 6 for _ in range(old_gaps_in_fa)]
+    oldgap_type = []  # its final size should old_gaps_in_fa
+    old_gap_connects = np.zeros((old_gaps_in_fa, 2), dtype=int)
+    old_gap_gap = np.zeros(old_gaps_in_fa, dtype=np.float64)
     fa_gap_data = [[0] * 6 for _ in range(inner_gaps_in_fa)]
     new_gap_data = [[0] * 6 for _ in range(newngaps_tot)]
+
+    nrep = 2 * nchn_side - 1
+    for i in range(0, old_gaps_in_fa):
+        if i <= old_gaps_in_fa - nchn_side:
+            if (i + 1) % nrep == 0:
+                oldgap_type.append('y')
+                old_gap_connects[i][0] = nchn_side*((i+1) // nrep)
+                old_gap_connects[i][1] = old_gap_connects[i][0] + nchn_side
+                old_gap_gap[i] = free_sp
+            else:
+                if ((i+1) % nrep) % 2 == 1:
+                    oldgap_type.append('x')
+                    old_gap_connects[i][0] = ((i+1) // nrep) * nchn_side + (((i+1) % nrep) // 2) + 1
+                    old_gap_connects[i][1] = old_gap_connects[i][0] + 1
+                else:
+                    oldgap_type.append('y')
+                    old_gap_connects[i][0] = ((i + 1) // nrep) * nchn_side + (((i + 1) % nrep) // 2)
+                    old_gap_connects[i][1] = old_gap_connects[i][0] + nchn_side
+        else:
+            oldgap_type.append('x')
+            old_gap_connects[i][0] = (nchn_side-1) * nchn_side + ((i + 1) % nrep)
+            old_gap_connects[i][1] = old_gap_connects[i][0] + 1
 
     def isgapbetweenassemblies():
         # gets NONO variable and calculate new MSIM from Card 4.2
@@ -894,9 +937,13 @@ def main():
     file.close()
 
     print(num_sides_connect)
+    print(old_gap_connects)
+    print(oldgap_type)
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
     # TODO Change the name of the vtk and hdf5 files that are generated (e.g. adding '_DLEV2' before the file extension
-
+    print(old_gaps_in_fa)
+    print(nchn_side)
+    print(rods_for_subchannel)
 main()
 
