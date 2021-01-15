@@ -609,51 +609,10 @@ def main():
     for i in range(1, nchn_side - 2):
         coords2[i] = coords2[i - 1] + pp
 
-    # for i in range(0, new_ngaps):
-    #     new_gap_data[i][0] = int(i+1)
-    #     nrep = 2*new_chn_side-1  # number of gaps alternated
-    #     aux = float(0)
-    #     if i <= new_ngaps - new_chn_side:
-    #         if (i+1) % nrep == 0:
-    #             new_gap_data[i][5] = 'y'
-    #             new_gap_data[i][1] = new_chn_side*((i+1) // nrep)
-    #             new_gap_data[i][2] = new_gap_data[i][1] + new_chn_side
-    #         else:
-    #             if ((i+1) % nrep) % 2 == 1:
-    #                 new_gap_data[i][5] = 'x'
-    #                 new_gap_data[i][1] = ((i+1) // nrep) * new_chn_side + (((i+1) % nrep) // 2) + 1
-    #                 new_gap_data[i][2] = new_gap_data[i][1] + 1
-    #             else:
-    #                 new_gap_data[i][5] = 'y'
-    #                 new_gap_data[i][1] = ((i + 1) // nrep) * new_chn_side + (((i + 1) % nrep) // 2)
-    #                 new_gap_data[i][2] = new_gap_data[i][1] + new_chn_side
-    #
-    #     else:
-    #         new_gap_data[i][5] = 'x'
-    #         new_gap_data[i][1] = (new_chn_side-1)*new_chn_side + ((i + 1) % nrep)
-    #         new_gap_data[i][2] = new_gap_data[i][1] + 1
-    #
-    #     if new_gap_data[i][5] == 'x':
-    #         for j in range(0, D_lev):
-    #             search = subchannels_in_channel[new_gap_data[i][1]-1][j][D_lev - 1]
-    #             aux += gap_data[findthechannelingaps(gap_data, search, time=1) - 1][3]
-    #         new_gap_data[i][4] = new_loc_channels[new_gap_data[i][2]-1][0] - new_loc_channels[new_gap_data[i][1]-1][0]
-    #         new_gap_data[i][6] = new_loc_channels[new_gap_data[i][1]-1][0] + new_sizes[new_gap_data[i][1]-1][0]/2
-    #         if abs(new_gap_data[i][6]) < 1e-6:
-    #             new_gap_data[i][6] = 0.0
-    #         new_gap_data[i][7] = new_loc_channels[new_gap_data[i][1]-1][1]
-    #
-    #     if new_gap_data[i][5] == 'y':
-    #         for j in range(0, D_lev):
-    #             search = subchannels_in_channel[new_gap_data[i][1]-1][D_lev-1][j]
-    #             aux += gap_data[findthechannelingaps(gap_data, search, time=2) - 1][3]
-    #         new_gap_data[i][4] = new_loc_channels[new_gap_data[i][1]-1][1] - new_loc_channels[new_gap_data[i][2]-1][1]
-    #         new_gap_data[i][6] = new_loc_channels[new_gap_data[i][1]-1][0]
-    #         new_gap_data[i][7] = new_loc_channels[new_gap_data[i][1]-1][1] - new_sizes[new_gap_data[i][1]-1][1]/2
-    #         if abs(new_gap_data[i][7]) < 1e-6:
-    #             new_gap_data[i][7] = 0.0
-    #     new_gap_data[i][3] = aux  # stores the GAP magnitude
-
+    rod1 = int(0)
+    rod2 = int(0)
+    d1 = float(0)
+    d2 = float(0)
     oldgap_type = []  # its final size should old_gaps_in_fa
     old_gap_connects = np.zeros((old_gaps_in_fa, 2), dtype=int)
     old_gap_gap = np.zeros(old_gaps_in_fa, dtype=np.float64)
@@ -668,19 +627,48 @@ def main():
                 old_gap_connects[i][0] = nchn_side*((i+1) // nrep)
                 old_gap_connects[i][1] = old_gap_connects[i][0] + nchn_side
                 old_gap_gap[i] = free_sp
+                rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][0]
+                old_gap_gap[i] -= 0.5 * od_rods[rod1 - 1]
+
             else:
                 if ((i+1) % nrep) % 2 == 1:
                     oldgap_type.append('x')
                     old_gap_connects[i][0] = ((i+1) // nrep) * nchn_side + (((i+1) % nrep) // 2) + 1
                     old_gap_connects[i][1] = old_gap_connects[i][0] + 1
+                    if i + 1 <= nrep:
+                        old_gap_gap[i] = free_sp
+                        rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][1]
+                        old_gap_gap[i] -= 0.5 * od_rods[rod1 - 1]
+                    else:
+                        old_gap_gap[i] = pp
+                        rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][0][1]
+                        rod2 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][1]
+                        old_gap_gap[i] -= 0.5 * (od_rods[rod1 - 1] + od_rods[rod2 - 1])
+
                 else:
+
                     oldgap_type.append('y')
                     old_gap_connects[i][0] = ((i + 1) // nrep) * nchn_side + (((i + 1) % nrep) // 2)
                     old_gap_connects[i][1] = old_gap_connects[i][0] + nchn_side
+                    if i + 1 % nrep == 2:
+                        old_gap_gap[i] = free_sp
+                        rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][1]
+                        old_gap_gap[i] -= 0.5 * od_rods[rod1 - 1]
+                    else:
+                        old_gap_gap[i] = pp
+                        rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][0]
+                        rod2 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][1]
+                        old_gap_gap[i] -= 0.5 * (od_rods[rod1 - 1] + od_rods[rod2 - 1])
+
+
+
         else:
             oldgap_type.append('x')
             old_gap_connects[i][0] = (nchn_side-1) * nchn_side + ((i + 1) % nrep)
             old_gap_connects[i][1] = old_gap_connects[i][0] + 1
+            old_gap_gap[i] = free_sp
+            rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][0][1]
+            old_gap_gap[i] -= 0.5 * od_rods[rod1 - 1]
 
     def isgapbetweenassemblies():
         # gets NONO variable and calculate new MSIM from Card 4.2
@@ -936,14 +924,10 @@ def main():
     file.writelines(lines)
     file.close()
 
-    print(num_sides_connect)
-    print(old_gap_connects)
-    print(oldgap_type)
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
     # TODO Change the name of the vtk and hdf5 files that are generated (e.g. adding '_DLEV2' before the file extension
-    print(old_gaps_in_fa)
-    print(nchn_side)
-    print(rods_for_subchannel)
+
+
 main()
 
