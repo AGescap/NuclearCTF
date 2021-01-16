@@ -754,7 +754,7 @@ def main():
 
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
     # TODO Reorder many chunks of code so that it edits the .inp document in a more structured way
-    print(gap_data)
+
 
 main()
 
