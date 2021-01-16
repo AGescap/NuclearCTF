@@ -621,6 +621,7 @@ def main():
     new_loc_gaps = np.zeros((inner_gaps_in_fa, 2), dtype=np.float64)
     new_gap_lngts = np.zeros(inner_gaps_in_fa, dtype=np.float64)
     new_gap_dirs = []
+
     nrep = 2 * nchn_side - 1
 
     for i in range(0, old_gaps_in_fa):
@@ -649,11 +650,10 @@ def main():
                         old_gap_gap[i] -= 0.5 * (od_rods[rod1 - 1] + od_rods[rod2 - 1])
 
                 else:
-
                     oldgap_type.append('y')
                     old_gap_connects[i][0] = ((i + 1) // nrep) * nchn_side + (((i + 1) % nrep) // 2)
                     old_gap_connects[i][1] = old_gap_connects[i][0] + nchn_side
-                    if i + 1 % nrep == 2:
+                    if (i + 1) % nrep == 2:
                         old_gap_gap[i] = free_sp
                         rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][1]
                         old_gap_gap[i] -= 0.5 * od_rods[rod1 - 1]
@@ -672,6 +672,7 @@ def main():
             old_gap_gap[i] -= 0.5 * od_rods[rod1 - 1]
 
     nrep = 2 * newchn_side - 1
+
     for i in range(0, inner_gaps_in_fa):
         aux = np.float64(0)
         if i <= inner_gaps_in_fa - newchn_side:
