@@ -289,6 +289,10 @@ def main():
     # FA just rightwards and valued 0 if not. The same for the second component but it checks if there is a FA
     # just downwards
 
+    aux = int(0)
+    aux1 = int(0)
+    aux2 = int(0)
+    memaux = int(0)
     for i in range(0, fa_num - 1):
         auxvar = ret_FA(fa_numcol, fa_transl[i])
         if fa_transl[i] > fa_numcol:
@@ -318,15 +322,14 @@ def main():
                     fa_connect[i][1] = 1
 
         num_sides_connect = num_sides_connect + fa_connect[i][0] + fa_connect[i][1]
+        auxrow = (fa_transl[i] - 1 ) // fa_numcol + 1
+        connect_in_row[auxrow - 1][0] += fa_connect[i][0]
+        connect_in_row[auxrow - 1][1] += fa_connect[i][1]
 
-    aux = int(0)
-    aux1 = int(0)
     # for i in range(0, fa_numrow):
     #     if i + 1 == fa_numrow:
     #         for j in range(0, fa_numcol - 1):
     #             if
-
-
 
     # local parameters in a FA
     free_sp = (bp - (nrods_side-1)*pp)/2
@@ -498,7 +501,6 @@ def main():
     acum_newchn_in_core_row = np.zeros(fa_numrow, dtype=int)
     newchn_in_fa_row = np.zeros(fa_numrow, dtype=int)
     acum_newchn_in_fa_row = np.zeros(fa_numrow, dtype=int)
-
     # defines the magnitudes for the Card 2 to be edited and written
 
     card2_chan = np.zeros(newchn_tot, dtype=int)
@@ -728,10 +730,26 @@ def main():
         new_gap_gaps[i] = aux
 
     aux = int(0)
-    gaps_acum_per_row = np.zeros(totrodsrow_n, dtype=int)
-    # for i in range(0, totrodsrow_n):
-    #     if i + 1 == totrodsrow_n:
+    nrep = 2 * newchn_side - 1
+    totgaps_per_row = np.zeros(totrodsrow_n, dtype=int)
+    acum_gaps_per_row = np.zeros(totrodsrow_n, dtype=int)
+    for i in range(0, totrodsrow_n):
+        aux = i // newchn_side + 1
+        if i % newchn_side == newchn_side - 1:
+            totgaps_per_row[i] = (newchn_side - 1) * assemb_in_row[aux - 1]\
+                                 + connect_in_row[aux - 1][1] * newchn_side\
+                                 + connect_in_row[aux - 1][0]
 
+        else:
+            totgaps_per_row[i] = nrep * assemb_in_row[aux - 1]\
+                                 + connect_in_row[aux - 1][0]
+
+    for i in range(0, totrodsrow_n):
+        if i == 0:
+            acum_gaps_per_row[i] = totgaps_per_row[i]
+
+        else:
+            acum_gaps_per_row[i] = acum_gaps_per_row[i - 1] + totgaps_per_row[i]
 
     nono = int(lines[findheaderinline(lines, "NCHN NONO")+1].split()[2])
     new_msim = nono*newchn_tot
@@ -986,9 +1004,7 @@ def main():
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
 
-    print(fa_transl)
-    print(fa_connect)
-    print(num_sides_connect)
+
 main()
 
 
