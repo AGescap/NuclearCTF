@@ -283,6 +283,7 @@ def main():
     # conectivity of the different subchannels
 
     fa_connect = np.zeros((fa_num, 2), dtype=int)
+    connect_in_row = np.zeros((fa_numrow, 2), dtype=int)
     num_sides_connect = int(0)
     # a matrix that stores two values for every fuel assembly. First component is valued 1 if there is another
     # FA just rightwards and valued 0 if not. The same for the second component but it checks if there is a FA
@@ -317,6 +318,15 @@ def main():
                     fa_connect[i][1] = 1
 
         num_sides_connect = num_sides_connect + fa_connect[i][0] + fa_connect[i][1]
+
+    aux = int(0)
+    aux1 = int(0)
+    # for i in range(0, fa_numrow):
+    #     if i + 1 == fa_numrow:
+    #         for j in range(0, fa_numcol - 1):
+    #             if
+
+
 
     # local parameters in a FA
     free_sp = (bp - (nrods_side-1)*pp)/2
@@ -583,7 +593,7 @@ def main():
     ngaps_tot = int(lines[findheaderinline(lines, "NK NDM2 NDM3") + 1].split()[0])
     old_gaps_in_fa = 2 * nchn_side * (nchn_side - 1)
     inner_gaps_in_fa = 2 * newchn_side * (newchn_side-1)
-    newngaps_tot = int((totrodscol_n-1) * totrodsrow_n + totrodscol_n * (totrodsrow_n - 1)) + inner_gaps_in_fa * fa_num
+    newngaps_tot = num_sides_connect * newchn_side + inner_gaps_in_fa * fa_num
     short_gap = free_sp + (dlev - 1) * pp  # dimensions for the long and short gap between assemblies
     long_gap = dlev * pp
 
@@ -716,6 +726,12 @@ def main():
                 new_loc_gaps[i][1] = 0.0
 
         new_gap_gaps[i] = aux
+
+    aux = int(0)
+    gaps_acum_per_row = np.zeros(totrodsrow_n, dtype=int)
+    # for i in range(0, totrodsrow_n):
+    #     if i + 1 == totrodsrow_n:
+
 
     nono = int(lines[findheaderinline(lines, "NCHN NONO")+1].split()[2])
     new_msim = nono*newchn_tot
@@ -970,6 +986,9 @@ def main():
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
 
-
+    print(fa_transl)
+    print(fa_connect)
+    print(num_sides_connect)
 main()
+
 
