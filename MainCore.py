@@ -597,8 +597,8 @@ def main():
     old_gaps_in_fa = 2 * nchn_side * (nchn_side - 1)
     inner_gaps_in_fa = 2 * newchn_side * (newchn_side-1)
     newngaps_tot = num_sides_connect * newchn_side + inner_gaps_in_fa * fa_num
-    short_gap = free_sp + (dlev - 1) * pp  # dimensions for the long and short gap between assemblies
-    long_gap = dlev * pp
+    short_gap = card2_YSIZ[newchn_side - 1]#free_sp + (dlev - 1) * pp card # dimensions for the long and short gap between assemblies
+    long_gap = card2_YSIZ[2*newchn_side - 1]
 
     # Creates gap data. First it creates gap data for a single assembly (in the future, for every type of assembly)
 
@@ -866,9 +866,11 @@ def main():
                 if (i + 1 > acum_gaps_per_row[j - 1]) and (i + 1 <= acum_gaps_per_row[j]):
                     auxrow = j + 1
                     numinrow = i + 1 - acum_gaps_per_row[j - 1]
+
+        auxrow_in_core_map = (auxrow - 1) // newchn_side + 1
         # if auxrow == totrodsrow_n - 1:
         #     tot_gap_dirs.append('x')
-
+    core_cent
 
 
     nono = int(lines[findheaderinline(lines, "NCHN NONO")+1].split()[2])
@@ -1123,19 +1125,6 @@ def main():
 
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
-
-    print(tot_gaps_guide)
-    compvector = np.zeros(totrodsrow_n, dtype=int)
-    for i in range(0, totrodsrow_n):
-        aux = 0
-        for j in range(0, nrep_max):
-            if tot_gaps_guide[i][j] != 0:
-                aux += 1
-
-        compvector[i] = aux
-
-    print(compvector - totgaps_per_row)
-    print(num_sides_connect)
 
 
 main()
