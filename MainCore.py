@@ -8,7 +8,8 @@ The input of this script will be a Core input file -i.e. more than one Fuel Asse
 have been merged into larger ones. This code is not much pythonic, but that makes it easier to be read by a Matlab user. Many of the instructions assume
 that there are no empty lines in the begginning of a Card, whereas most of them are ok with blank lines at the end of a Card.
 
-
+(*)It is likely that the script will not work for core arrays with one row of fuel assemblies. Is this is proven, a special
+   case could be created, given that many processes in the new gaps building would simplify considerably
  
 Author: Álvaro González Escapa
 Institution: Polytechnic University of Madrid
@@ -633,6 +634,11 @@ def main():
     new_loc_gaps = np.zeros((inner_gaps_in_fa, 2), dtype=np.float64)
     new_gap_lngts = np.zeros(inner_gaps_in_fa, dtype=np.float64)
     new_gap_dirs = []
+    tot_gap_connect = np.zeros((newngaps_tot, 2), dtype=int)
+    tot_gap_gaps =  np.zeros(newngaps_tot, dtype=np.float64)
+    tot_loc_gaps = np.zeros((newngaps_tot, 2), dtype=np.float64)
+    tot_gap_lngts = np.zeros(newngaps_tot, dtype=np.float64)
+    tot_gap_dirs = []
 
     nrep = 2 * nchn_side - 1
 
@@ -750,6 +756,65 @@ def main():
 
         else:
             acum_gaps_per_row[i] = acum_gaps_per_row[i - 1] + totgaps_per_row[i]
+
+    auxrow = int(0)
+    nrep_max = 2 * totrodscol_n - 1
+    nrep = 2 * newchn_side - 1
+    tot_gaps_guide = np.zeros((totrodsrow_n, nrep_max), dtype=int)
+    aux = int(0)
+
+    for i in range(0, totrodsrow_n):
+        aux = 0
+        auxrow = i // newchn_side + 1
+        if auxrow <= totrodsrow_n - 1:
+            for j in range(0, fa_numcol):
+        else:
+            if auxrow % newchn_side != 0:
+                for j in range(0, fa_numcol):
+                    if j != fa_numcol - 1:
+                        if core_map[auxrow - 1][j] != 0:
+                            for k in range(0, nrep):
+                                tot_gaps_guide[auxrow - 1][aux + k] = 1
+                            if core_map[auxrow - 1][j + 1] != 0:
+                                tot_gaps_guide[auxrow - 1][aux + nrep - 1] = -1
+                                tot_gaps_guide[auxrow - 1][aux + nrep] = 1
+                                aux += nrep + 1
+                            else:
+                                aux += nrep
+
+                    else:
+                        if core_map[auxrow - 1][j] != 0:
+                            for k in range(0, nrep):
+                                tot_gaps_guide[auxrow - 1][aux + k] = 1
+                                #aux += nrep not used?
+
+            # else:
+            #     for j in range(0, fa_numcol):
+            #         if j != fa_numcol - 1:
+            #             if core_map[auxrow - 1][j] != 0:
+            #                 if core_map[auxrow][j] != 0:
+            #                     for k in range(0, nrep):
+
+
+
+
+
+
+
+
+    for i in range(0, newngaps_tot):
+        if i + 1 <= acum_gaps_per_row[0]:
+            auxrow = 1
+            numinrow = i + 1
+        else:
+            for j in range(1, totrodsrow_n):
+                if (i + 1 > acum_gaps_per_row[j - 1]) and (i + 1 <= acum_gaps_per_row[j]):
+                    auxrow = j + 1
+                    numinrow = i + 1 - acum_gaps_per_row[j - 1]
+        # if auxrow == totrodsrow_n - 1:
+        #     tot_gap_dirs.append('x')
+
+
 
     nono = int(lines[findheaderinline(lines, "NCHN NONO")+1].split()[2])
     new_msim = nono*newchn_tot
