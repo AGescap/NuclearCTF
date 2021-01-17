@@ -760,47 +760,102 @@ def main():
     auxrow = int(0)
     nrep_max = 2 * totrodscol_n - 1
     nrep = 2 * newchn_side - 1
+    nrep1 = newchn_side - 1
     tot_gaps_guide = np.zeros((totrodsrow_n, nrep_max), dtype=int)
     aux = int(0)
-
     for i in range(0, totrodsrow_n):
         aux = 0
-        auxrow = i // newchn_side + 1
-        if auxrow <= totrodsrow_n - 1:
-            for j in range(0, fa_numcol):
-        else:
-            if auxrow % newchn_side != 0:
+        auxrow = (i // newchn_side) + 1
+        if i + 1 <= totrodsrow_n - 1:
+            if (i + 1) % newchn_side != 0:
                 for j in range(0, fa_numcol):
                     if j != fa_numcol - 1:
                         if core_map[auxrow - 1][j] != 0:
                             for k in range(0, nrep):
-                                tot_gaps_guide[auxrow - 1][aux + k] = 1
+                                tot_gaps_guide[i][aux + k] = 1
+                                # if i == 4:
+                                #     print(tot_gaps_guide[i][aux + k])
                             if core_map[auxrow - 1][j + 1] != 0:
-                                tot_gaps_guide[auxrow - 1][aux + nrep - 1] = -1
-                                tot_gaps_guide[auxrow - 1][aux + nrep] = 1
+                                tot_gaps_guide[i][aux + nrep - 1] = -1
+                                tot_gaps_guide[i][aux + nrep] = 1
                                 aux += nrep + 1
+
                             else:
                                 aux += nrep
 
                     else:
                         if core_map[auxrow - 1][j] != 0:
                             for k in range(0, nrep):
-                                tot_gaps_guide[auxrow - 1][aux + k] = 1
-                                #aux += nrep not used?
-
-            # else:
-            #     for j in range(0, fa_numcol):
-            #         if j != fa_numcol - 1:
-            #             if core_map[auxrow - 1][j] != 0:
-            #                 if core_map[auxrow][j] != 0:
-            #                     for k in range(0, nrep):
+                                tot_gaps_guide[i][aux + k] = 1
 
 
+            else:
+                for j in range(0, fa_numcol):
+                    if j != fa_numcol - 1:
+                        if core_map[auxrow - 1][j] != 0:
+                            if core_map[auxrow][j] != 0:
+                                for k in range(0, nrep):
+                                    if k == nrep - 1:
+                                        tot_gaps_guide[i][aux + k] = -1
+                                    else:
+                                        if k + 1 % 2 == 1:
+                                            tot_gaps_guide[i][aux + k] = 1
+                                        else:
+                                            tot_gaps_guide[i][aux + k] = -1
 
+                                if core_map[auxrow - 1][j + 1] != 0:
+                                    tot_gaps_guide[i][aux + nrep] = -1
+                                    aux += nrep + 1
+                                else:
+                                    aux += nrep
 
+                            else:
+                                for k in range(0, nrep1):
+                                    tot_gaps_guide[i][aux + k] = 1
 
+                                if core_map[auxrow - 1][j + 1] != 0:
+                                    tot_gaps_guide[i][aux + nrep1] = -1
+                                    aux += nrep1 + 1
+                                else:
+                                    aux += nrep1
 
+                    else:
+                        if core_map[auxrow - 1][j] != 0:
+                            if core_map[auxrow][j] != 0:
+                                for k in range(0, nrep):
+                                    if k == nrep - 1:
+                                        tot_gaps_guide[i][aux + k] = -1
+                                    else:
+                                        if k + 1 % 2 == 1:
+                                            tot_gaps_guide[i][aux + k] = 1
+                                        else:
+                                            tot_gaps_guide[i][aux + k] = -1
 
+                                aux += nrep
+
+                            else:
+                                for k in range(0, nrep1):
+                                    tot_gaps_guide[i][aux + k] = 1
+
+                                aux += nrep1
+
+        else:
+            for j in range(0, fa_numcol):
+                if core_map[auxrow - 1][j] != 0:
+                    if j != fa_numcol - 1:
+                        for k in range(0, nrep1):
+                            tot_gaps_guide[i][aux + k] = 1
+
+                        if core_map[auxrow - 1][j + 1] != 0:
+                            tot_gaps_guide[i][aux + nrep1] = 1
+                            aux += nrep1 + 1
+
+                        else:
+                            aux += nrep1
+
+                    else:
+                        for k in range(0, nrep1):
+                            tot_gaps_guide[i][aux + k] = 1
 
     for i in range(0, newngaps_tot):
         if i + 1 <= acum_gaps_per_row[0]:
@@ -1068,6 +1123,19 @@ def main():
 
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
+
+    print(tot_gaps_guide)
+    compvector = np.zeros(totrodsrow_n, dtype=int)
+    for i in range(0, totrodsrow_n):
+        aux = 0
+        for j in range(0, nrep_max):
+            if tot_gaps_guide[i][j] != 0:
+                aux += 1
+
+        compvector[i] = aux
+
+    print(compvector - totgaps_per_row)
+    print(num_sides_connect)
 
 
 main()
