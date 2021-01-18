@@ -172,11 +172,13 @@ def main():
 
     # gets rods number in the assembly
 
-    nfrods = int(l_assem[findheaderinline(l_assem, "Number of fuel rods")+1].split()[0])
+    nfrods = np.zeros(fa_types, dtype=int)
+    nfrods[0] = int(l_assem[findheaderinline(l_assem, "Number of fuel rods")+1].split()[0])
 
     # gets number of guidetubes
 
-    ngt = int(l_assem[findheaderinline(l_assem, "Number of guide tubes/water rods") + 1].split()[0])
+    ngt = np.zeros(fa_types, dtype=int)
+    ngt[0] = int(l_assem[findheaderinline(l_assem, "Number of guide tubes/water rods") + 1].split()[0])
 
     # gets the old number of channels in the deck.inp
 
@@ -184,7 +186,7 @@ def main():
 
     # total number of rods, rods per side, channels per side, discretization level
 
-    nrods = nfrods + ngt
+    nrods = nfrods[0] + ngt[0]          # so far, this figure will remain constant through the different FA's
     nrods_side = int(np.sqrt(nrods))
     nchn_side = nrods_side + 1
     nchn = nchn_side**2
@@ -214,24 +216,54 @@ def main():
     # gets position of guide tubes if there are any. with the origin in top left corner of the FA,
     # the "0th" position marks the row and "1st" position, the column
 
-    fr_od = float(l_assem[findheaderinline(l_assem, "Cladding outer diameter") + 1].split()[0])
-    fr_od = fr_od/1000
+    fr_id = np.zeros(fa_types, dtype=np.float64)
+    fr_id[0] = float(l_assem[findheaderinline(l_assem, "Cladding inner diameter") + 1].split()[0])
+    fr_id[0] = fr_id / 1000
+    fr_od = np.zeros(fa_types, dtype=np.float64)
+    fr_od[0] = float(l_assem[findheaderinline(l_assem, "Cladding outer diameter") + 1].split()[0])
+    fr_od[0] = fr_od / 1000
+    fr_clad_mat = []
+    fr_clad_mat.append(l_assem[findheaderinline(l_assem, "Cladding material") + 1].split()[0])
 
-    gtpos = np.zeros((ngt, 2), dtype=int)
-    rodtype = np.zeros(nrods, dtype=int)
+    gtpos = np.zeros((fa_types, nrods, 2), dtype=int)
+    gt_id = np.zeros(fa_types, dtype=int)
+    gt_od = np.zeros(fa_types, dtype=int)
+
+    rodtype = np.zeros((fa_types, nrods), dtype=int)
+    fp_diam = np.zeros(fa_types, dtype=float)
     auxvar = []
 
-    if ngt > 0:
+    fp_diam[0] = float(l_assem[findheaderinline(l_assem, "Fuel pellet diameter") + 1].split()[0])  # diam of fuel pellet
+    fp_diam[0] = fp_diam[0] / 1000
 
-        for i in range(ngt):
+    if ngt[0] > 0:
+
+        for i in range(ngt[0]):
             linaux = l_assem[findheaderinline(l_assem, "Use X Y format") + 1+i].split()
-            gtpos[i][0] = int(linaux[0])
-            gtpos[i][1] = int(linaux[1])
-            auxvar = nrods_side*(gtpos[i][0]-1) + gtpos[i][1] - 1
-            rodtype[auxvar] = 1
+            gtpos[0][i][0] = int(linaux[0])
+            gtpos[0][i][1] = int(linaux[1])
+            auxvar = nrods_side*(gtpos[0][i][0]-1) + gtpos[0][i][1] - 1
+            rodtype[0][auxvar] = 1
 
-        gt_od = float(l_assem[findheaderinline(l_assem, "Outer diameter of guide tube/water rod") + 1].split()[0])
-        gt_od = gt_od/1000
+        gt_od[0] = float(l_assem[findheaderinline(l_assem, "Outer diameter of guide tube/water rod") + 1].split()[0])
+        gt_od[0] = gt_od/1000
+
+    if fa_types > 1:
+        file_extra_fa = open("ExtraFA.inp", "r")
+        l_extra_fa = file_extra_fa.readlines()
+        file_extra_fa.close()
+        for i in range(0, fa_types - 1):
+            ngt[i + 1] = int(l_extra_fa[findheaderinline(l_extra_fa, "Number of guide tubes/water rods",
+                                                         time=i+1) + 1].split()[0])
+            fr_clad_mat.append(l_assem[findheaderinline(l_assem, "Cladding material", time=i+1) + 1].split()[0])
+            if ngt[i + 1] > 0:
+                for j in range(0, ngt[i + 1]):
+                    linaux = l_extra_fa[findheaderinline(l_extra_fa, "Use X Y format",
+                                                         time=i+1) + 1+j].split()
+                    gtpos[i + 1][j][0] = int(linaux[0])
+                    gtpos[i + 1][j][1] = int(linaux[1])
+                    auxvar = nrods_side*(gtpos[i + 1][j][0]-1) + gtpos[i + 1][j][1] - 1
+                    rodtype[i + 1][auxvar] = 1
 
     # stores the fuel assembly map
 
@@ -239,7 +271,7 @@ def main():
     for i in range(fa_numrow):
         linaux = (l_geo[findheaderinline(l_geo, "FUEL ASSEMBLY MAP") + 2+i].split())
         for j in range(fa_numcol):
-            core_map[i][j] = float(linaux[j+1])
+            core_map[i][j] = int(linaux[j+1])
 
     # creates absolute coordinates for the center of the different FAs. They are created for both empty-water-
     # FAs so that it has to be filtered afterwards. The reference is set in top left corner so that
