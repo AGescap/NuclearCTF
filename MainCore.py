@@ -315,7 +315,7 @@ def main():
     # stores the fuel assembly map
     # fa_transl contains an ordered list of the positions in the core array that have an actual FA
     fa_transl = np.zeros(fa_num, dtype=int)
-    fa_types = np.zeros(fa_num, dtype=int)
+    fa_types_list = np.zeros(fa_num, dtype=int)
 
     # core map has the core map, with the positions and the indexes
 
@@ -415,14 +415,14 @@ def main():
                 rods_for_subchannel[subchannels_in_rod[i][j][k] - 1][1-j][1-k] = i + 1
 
     # creates a matrix to store the data of the subchannels, so they can be merged afterwards
-
-    an = np.zeros(nchn, dtype=np.float64)
-    pw = np.zeros(nchn, dtype=np.float64)
     xsiz = np.zeros(nchn, dtype=np.float64)
     ysiz = np.zeros(nchn, dtype=np.float64)
     coords = np.zeros(nchn_side, dtype=np.float64)
     channX = np.zeros(nchn, dtype=np.float64)
     channY = np.zeros(nchn, dtype=np.float64)
+
+    an = np.zeros(nchn, dtype=np.float64)
+    pw = np.zeros(nchn, dtype=np.float64)
 
     # identifies corner, side (horizontal and vertical) and center subchannels
 
@@ -500,7 +500,7 @@ def main():
 
     # new channel data
 
-    new_an_pw = np.zeros((newchn, 2))
+    new_an_pw = np.zeros((fa_types, newchn, 2), dtype=np.float64)
     new_sizes = np.zeros((newchn, 2))
     new_loc_channels = np.zeros((newchn, 2))
 
@@ -518,8 +518,8 @@ def main():
                 if k == 0:
                     aux_y += ysiz[int(subchannels_in_channel[i][j][k])-1]
 
-        new_an_pw[i][0] = aux1
-        new_an_pw[i][1] = aux2
+        new_an_pw[0][i][0] = aux1
+        new_an_pw[0][i][1] = aux2
         new_sizes[i][0] = aux_x
         new_sizes[i][1] = aux_y
         if i == 0:
