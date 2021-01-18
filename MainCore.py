@@ -289,6 +289,7 @@ def main():
 
             else:
                 gt_mat.append("X")
+
     # stores the fuel assembly map
 
     core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
@@ -330,7 +331,7 @@ def main():
         for j in range(fa_numcol):
             if int(linaux[j+1]) != 0:
                 fa_transl[cont_b] = cont_a
-                fa_types[cont_b] = int(linaux[j+1])
+                fa_types_list[cont_b] = int(linaux[j+1])
                 fa_cent[cont_b] = core_cent[i][j]
                 cont_b = cont_b + 1
 
@@ -379,23 +380,20 @@ def main():
     free_sp = (bp - (nrods_side-1)*pp)/2
 
     # now, for every FA type, generic info about channels (An, Pw, XSIZ, YSIZ) should be created
-
     # creates an array to store the outer diameters of the rods
 
-    od_s = []
+    od_s = np.zeros((fa_types, 2), dtype=float)
 
-    if ngt > 0:
-        od_s = np.ones(2, dtype=float)
-        od_s[0] = fr_od
-        od_s[1] = gt_od
+    od_s[0][0] = fr_od[0]
+    od_s[1][0] = gt_od[0]
 
     # print(rodtype)
-    od_rods = fr_od*np.ones(nrods, dtype=float)
-    # print(ngt)
-    # print(od_s)
-    if ngt > 0:
-        for i in range(0, nrods):
-            od_rods[i] = od_s[rodtype[i]]
+    od_rods = np.ones((fa_types, nrods), dtype=float)
+
+    for i in range(1, fa_types):
+        if ngt[i] > 0:
+            for j in range(0, nrods):
+                od_rods[i][j] = od_s[rodtype[i][j]]
 
     # creates an array with the subchannels that correspond to a rod
 
@@ -418,8 +416,7 @@ def main():
     xsiz = np.zeros(nchn, dtype=np.float64)
     ysiz = np.zeros(nchn, dtype=np.float64)
     coords = np.zeros(nchn_side, dtype=np.float64)
-    channX = np.zeros(nchn, dtype=np.float64)
-    channY = np.zeros(nchn, dtype=np.float64)
+    new_coords = np.zeros(newchn_side, dtype=np.float64)
 
     an = np.zeros(nchn, dtype=np.float64)
     pw = np.zeros(nchn, dtype=np.float64)
@@ -444,14 +441,18 @@ def main():
 
     coords[0] = -bp/2 + free_sp/2
     coords[-1] = bp/2 - free_sp/2
+
     for i in range(1, nchn_side-1):
         coords[i] = -bp/2 + free_sp + pp / 2 + (i-1)*pp
 
-    # edits coordinate data
+    new_coords[0] = -bp / 2 + (free_sp + (dlev - 1) * pp) / 2
+    new_coords[-1] = bp / 2 - (free_sp + (dlev - 1) * pp) / 2
 
-    for i in range(0, nchn):
-        channX[i] = coords[i % nchn_side]
-        channY[i] = coords[-(i//nchn_side + 1)]
+    for i in range(1, newchn_side - 1):
+        new_coords[i] = -bp / 2 + free_sp + (dlev - 1) * pp / 2 + (i - 1) * dlev * pp
+
+
+    # edits coordinate data
 
     for i in range(0, 4):
         xsiz[chan_corner[i]-1] = free_sp
@@ -601,8 +602,8 @@ def main():
         chanreset3 = chanreset2 - (aux_fa - 1) * newchn_side
         # aux_fatype = core_map[auxrow - 1][aux_fa - 1]
         index_in_fa = chanreset3 + (auxrow2 - 1) * newchn_side
-        card2_an[i] = new_an_pw[index_in_fa - 1][0]
-        card2_pw[i] = new_an_pw[index_in_fa - 1][1]
+        card2_an[i] = new_an_pw[0][index_in_fa - 1][0]
+        card2_pw[i] = new_an_pw[0][index_in_fa - 1][1]
         card2_XSIZ[i] = new_sizes[index_in_fa - 1][0]
         card2_YSIZ[i] = new_sizes[index_in_fa - 1][1]
 
