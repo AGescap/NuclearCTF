@@ -25,5 +25,6 @@ The purpose here is more general: to homogenize a CTF core input, also made with
  * ngt = number of guide tubes / water rods in each type of FA. Vector (fa_types, 1) <br/>
  * nrods = number of rods for every FA. The number of rods per side is thus nrods_side = sqrt(nrods). Scalar <br/>
  * pp = pin pitch, gets converted into m. Scalar <br/>
+ * subchannels_in_rod: 3-D tensor. for every rod 
 
 
