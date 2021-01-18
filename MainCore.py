@@ -239,7 +239,7 @@ def main():
     for i in range(fa_numrow):
         linaux = (l_geo[findheaderinline(l_geo, "FUEL ASSEMBLY MAP") + 2+i].split())
         for j in range(fa_numcol):
-            core_map[i][j] = float(linaux[j+1])
+            core_map[i][j] = int(linaux[j+1])
 
     # creates absolute coordinates for the center of the different FAs. They are created for both empty-water-
     # FAs so that it has to be filtered afterwards. The reference is set in top left corner so that
