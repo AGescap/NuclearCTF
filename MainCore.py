@@ -222,9 +222,11 @@ def main():
     fr_od = np.zeros(fa_types, dtype=np.float64)
     fr_od[0] = float(l_assem[findheaderinline(l_assem, "Cladding outer diameter") + 1].split()[0])
     fr_od[0] = fr_od / 1000
+
     fr_clad_mat = []
     fr_clad_mat.append(l_assem[findheaderinline(l_assem, "Cladding material") + 1].split()[0])
     gt_mat = []
+
     gapcond = np.zeros(fa_types, dtype=float)
     gapcond[0] = float(l_assem[findheaderinline(l_assem, "Constant gap conductance")+1].split()[0])
     gtpos = np.zeros((fa_types, nrods, 2), dtype=int)
@@ -234,7 +236,7 @@ def main():
 
     rodtype = np.zeros((fa_types, nrods), dtype=int)
     fp_diam = np.zeros(fa_types, dtype=float)
-    auxvar = []
+    auxvar = int(0)
 
     fp_diam[0] = float(l_assem[findheaderinline(l_assem, "Fuel pellet diameter") + 1].split()[0])  # diam of fuel pellet
     fp_diam[0] = fp_diam[0] / 1000
@@ -337,54 +339,41 @@ def main():
 
     # conectivity of the different subchannels
 
-    fa_connect = np.zeros((fa_num, 2), dtype=int)
+    fa_connect = np.zeros((fa_numrow, fa_numcol, 2), dtype=int)
     connect_in_row = np.zeros((fa_numrow, 2), dtype=int)
     num_sides_connect = int(0)
     # a matrix that stores two values for every fuel assembly. First component is valued 1 if there is another
     # FA just rightwards and valued 0 if not. The same for the second component but it checks if there is a FA
     # just downwards
 
-    aux = int(0)
     aux1 = int(0)
     aux2 = int(0)
-    memaux = int(0)
-    for i in range(0, fa_num - 1):
-        auxvar = ret_FA(fa_numcol, fa_transl[i])
-        if fa_transl[i] > fa_numcol:
-            if fa_transl[i] % fa_numcol != 0:
-                if fa_transl[i] // fa_numcol != fa_numrow - 1:
-                    if core_map[auxvar[0]-1][auxvar[1]] != 0:
-                        fa_connect[i][0] = 1
-                    if core_map[auxvar[0]][auxvar[1]-1] != 0:
-                        fa_connect[i][1] = 1
+    for i in range(0, fa_numrow):
+        for j in range(0, fa_numcol):
+            if core_map[i][j] != 0:
+                if i + 1 <= fa_numrow - 1:
+                    if j + 1 <= fa_numcol - 1:
+                        if core_map[i][j + 1] != 0:
+                            fa_connect[i][j][0] = 1
+                        if core_map[i + 1][j] != 0:
+                            fa_connect[i][j][1] = 1
+
+                    else:
+                        if core_map[i + 1][j] != 0:
+                            fa_connect[i][j][1] = 1
 
                 else:
-                    if core_map[auxvar[0]-1][auxvar[1]] != 0:
-                        fa_connect[i][0] = 1
+                    if j + 1 <= fa_numcol - 1:
+                        if core_map[i][j + 1] != 0:
+                            fa_connect[i][j][0] = 1
+            aux1 += fa_connect[i][j][0]
+            aux2 += fa_connect[i][j][1]
 
-            else:
-                if core_map[auxvar[0]][auxvar[1] - 1] != 0:
-                    fa_connect[i][1] = 1
-
-        else:
-            if fa_transl[i] % fa_numcol != 0:
-                if core_map[auxvar[0] - 1][auxvar[1]] != 0:
-                    fa_connect[i][0] = 1
-                if core_map[auxvar[0]][auxvar[1] - 1] != 0:
-                    fa_connect[i][1] = 1
-            else:
-                if core_map[auxvar[0]][auxvar[1] - 1] != 0:
-                    fa_connect[i][1] = 1
-
-        num_sides_connect = num_sides_connect + fa_connect[i][0] + fa_connect[i][1]
-        auxrow = (fa_transl[i] - 1 ) // fa_numcol + 1
-        connect_in_row[auxrow - 1][0] += fa_connect[i][0]
-        connect_in_row[auxrow - 1][1] += fa_connect[i][1]
-
-    # for i in range(0, fa_numrow):
-    #     if i + 1 == fa_numrow:
-    #         for j in range(0, fa_numcol - 1):
-    #             if
+        num_sides_connect = num_sides_connect + aux1 + aux2
+        connect_in_row[i][0] = aux1
+        connect_in_row[i][1] = aux2
+        aux1 = 0
+        aux2 = 0
 
     # local parameters in a FA
     free_sp = (bp - (nrods_side-1)*pp)/2
