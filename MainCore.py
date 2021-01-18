@@ -224,8 +224,11 @@ def main():
     fr_od[0] = fr_od / 1000
     fr_clad_mat = []
     fr_clad_mat.append(l_assem[findheaderinline(l_assem, "Cladding material") + 1].split()[0])
-
+    gt_mat = []
+    gapcond = np.zeros(fa_types, dtype=float)
+    gapcond[0] = float(l_assem[findheaderinline(l_assem, "Constant gap conductance")+1].split()[0])
     gtpos = np.zeros((fa_types, nrods, 2), dtype=int)
+    ftds = np.zeros(fa_types, dtype=float)
     gt_id = np.zeros(fa_types, dtype=int)
     gt_od = np.zeros(fa_types, dtype=int)
 
@@ -235,6 +238,7 @@ def main():
 
     fp_diam[0] = float(l_assem[findheaderinline(l_assem, "Fuel pellet diameter") + 1].split()[0])  # diam of fuel pellet
     fp_diam[0] = fp_diam[0] / 1000
+    ftds[0] = float(l_assem[findheaderinline(l_assem, "Theoretical density of the fuel pellet") + 1].split()[0])
 
     if ngt[0] > 0:
 
@@ -247,6 +251,12 @@ def main():
 
         gt_od[0] = float(l_assem[findheaderinline(l_assem, "Outer diameter of guide tube/water rod") + 1].split()[0])
         gt_od[0] = gt_od/1000
+        gt_id[0] = float(l_assem[findheaderinline(l_assem, "Inner diameter of guide tube/water rod") + 1].split()[0])
+        gt_id[0] = gt_id[0] / 1000
+        gt_mat.append(l_assem[findheaderinline(l_assem, "Guide tube/water rod material") + 1].split()[0])
+
+    else:
+        gt_mat.append("X")
 
     if fa_types > 1:
         file_extra_fa = open("ExtraFA.inp", "r")
@@ -255,8 +265,18 @@ def main():
         for i in range(0, fa_types - 1):
             ngt[i + 1] = int(l_extra_fa[findheaderinline(l_extra_fa, "Number of guide tubes/water rods",
                                                          time=i+1) + 1].split()[0])
-            fr_clad_mat.append(l_assem[findheaderinline(l_assem, "Cladding material", time=i+1) + 1].split()[0])
+            ftds[i + 1] = float(l_extra_fa[findheaderinline(l_extra_fa, "Theoretical density of the fuel pellet",
+                                                            time=i+1) + 1].split()[0])
+            fr_clad_mat.append(l_extra_fa[findheaderinline(l_extra_fa, "Cladding material", time=i+1) + 1].split()[0])
             if ngt[i + 1] > 0:
+                gt_id[i + 1] = float(l_extra_fa[findheaderinline(l_extra_fa,
+                                                                 "Inner diameter of guide tube/water rod",
+                                                                 time=i+1) + 1].split()[0])
+                gt_od[i + 1] = float(l_extra_fa[findheaderinline(l_extra_fa,
+                                                                 "Outer diameter of guide tube/water rod",
+                                                                 time=i+1) + 1].split()[0])
+                gt_mat.append(l_extra_fa[findheaderinline(l_extra_fa,
+                                                          "Guide tube/water rod material") + i + 1].split()[0])
                 for j in range(0, ngt[i + 1]):
                     linaux = l_extra_fa[findheaderinline(l_extra_fa, "Use X Y format",
                                                          time=i+1) + 1+j].split()
@@ -265,6 +285,8 @@ def main():
                     auxvar = nrods_side*(gtpos[i + 1][j][0]-1) + gtpos[i + 1][j][1] - 1
                     rodtype[i + 1][auxvar] = 1
 
+            else:
+                gt_mat.append("X")
     # stores the fuel assembly map
 
     core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
