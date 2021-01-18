@@ -9,6 +9,6 @@ The mentioned script will only represent a fuel element
 The purpose here is more general: to homogenize a CTF core input
 ### Variables list:
 bp = bundle pitch, gets converted into m <br/>
-pp = pin pitch, gets converted into m
+ * pp = pin pitch, gets converted into m <br/>
 nrods = number of rods in an FA. The number of rods per side is thus nrods_side = sqrt(nrods).
 nchn = number of subchannels in an FA before homogenization. The number of channels per side is nchn_side = nrods_side + 1
