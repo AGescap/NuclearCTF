@@ -327,11 +327,6 @@ def main():
         connect_in_row[auxrow - 1][0] += fa_connect[i][0]
         connect_in_row[auxrow - 1][1] += fa_connect[i][1]
 
-    # for i in range(0, fa_numrow):
-    #     if i + 1 == fa_numrow:
-    #         for j in range(0, fa_numcol - 1):
-    #             if
-
     # local parameters in a FA
     free_sp = (bp - (nrods_side-1)*pp)/2
 
