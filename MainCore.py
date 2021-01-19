@@ -304,17 +304,21 @@ def main():
             else:
                 gt_mat.append("X")
 
-    # creates absolute coordinates for the center of the different FAs. They are created for both empty-water-
-    # FAs so that it has to be filtered afterwards. The reference is set in top left corner so that
-    # first coordinate refers to rows and second coordinate refers to columns
 
-    # fa_transl contains an ordered list of the positions in the core array that have an actual FA
     fa_types_list = np.zeros(fa_num, dtype=int)
 
     # core map has the core map, with the positions and the indexes
 
     core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
     numb_core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
+    core_centX = np.zeros(fa_numcol, dtype=np.float64)
+    core_centY = np.zeros(fa_numrow, dtype=np.float64)
+
+    for i in range(0, fa_numcol):
+        core_centX[i] = ((i + 1) - 0.5 - float(fa_numcol) / 2) * bp
+
+    for i in range(0, fa_numrow):
+        core_centY[i] = ((i + 1) - 0.5 - float(fa_numcol) / 2) * bp
 
     # edit fa_transl, edit core_map
 
@@ -432,6 +436,9 @@ def main():
 
     an = np.zeros((nchn_side, nchn_side), dtype=np.float64)
     an_0 = np.zeros((nchn_side, nchn_side), dtype=np.float64)
+    gapsX_gap = np.zeros((fa_types, nchn_side, nchn_side - 1), dtype=np.float64)
+    gapsY_gap = np.zeros((fa_types, nchn_side - 1, nchn_side), dtype=np.float64)
+
     for i in range(0, nchn_side):
         for j in range(0, nchn_side):
             an_0[i][j] = xsiz[j] * ysiz[i]
@@ -470,11 +477,12 @@ def main():
 
     # new channel data
 
-
     new_an_pw = np.zeros((fa_types, newchn_side, newchn_side, 2), dtype=np.float64)
     new_sizes = np.zeros(newchn_side, dtype=np.float64)
     new_sizes[1] = free_sp + (dlev - 1) * pp
     new_sizes[-1] = free_sp + (dlev - 1) * pp
+    new_gapsX_gap = np.zeros((fa_types, newchn_side, newchn_side - 1), dtype=np.float64)
+    new_gapsY_gap = np.zeros((fa_types, newchn_side - 1, newchn_side), dtype=np.float64)
 
     for i in range(1, newchn_side - 1):
         new_sizes[i] = dlev * pp
@@ -503,14 +511,57 @@ def main():
                 new_an_pw[n][i][j][0] = aux1
                 new_an_pw[n][i][j][1] = aux2
 
+    rod = np.zeros(2, dtype=int)
+    auxsubch = np.zeros(2, dtype=int)
+    for n in range(0, fa_types):
+        for i in range(0, newchn_side):
+            for j in range(0, newchn_side):
+                if i != newchn_side - 1:
+                    if j != newchn_side - 1:
+                        new_gapsX_gap[n][i][j] = new_sizes[i]
+                        new_gapsY_gap[n][i][j] = new_sizes[j]
+                        for k in range(0, dlev):
+                            for l in range(0, 2):
+                                auxsubch = [subchannels_in_channel[i][j][k][dlev - 1][0], subchannels_in_channel[i][j][k][dlev - 1][1]]
+                                print(auxsubch)
+                                rod[0] = rods_for_subchannel[auxsubch[0], auxsubch[1]]
+                                if rod[0] != -1:
+                                    rod[1] = rods_for_subchannel[subchannels_in_channel[i][j][k][dlev - 1][1]]
+                                    new_gapsX_gap[n][i][j] -= 0.5* od_rods[n][rod[0]][rod[1]]
+
+                                rod[0] = rods_for_subchannel[subchannels_in_channel[i][j][dlev - 1][k][0]]
+                                if rod[0] != -1:
+                                    rod[1] = rods_for_subchannel[subchannels_in_channel[i][j][dlev - 1][k][1]]
+                                    new_gapsY_gap[n][i][j] -= 0.5 * od_rods[n][rod[0]][rod[1]]
+
+                    else:
+                        new_gapsY_gap[n][i][j] = new_sizes[j]
+                        for k in range(0, dlev):
+                            rod[0] = rods_for_subchannel[subchannels_in_channel[i][j][dlev - 1][k][0]]
+                            if rod[0] != -1:
+                                rod[1] = rods_for_subchannel[subchannels_in_channel[i][j][dlev - 1][k][1]]
+                                new_gapsY_gap[n][i][j] -= 0.5 * od_rods[n][rod[0]][rod[1]]
+                else:
+                    new_gapsX_gap[n][i][j] = new_sizes[i]
+                    for k in range(0, dlev):
+                        rod[0] = rods_for_subchannel[subchannels_in_channel[i][j][k][dlev - 1][0]]
+                        if rod[0] != -1:
+                            rod[1] = rods_for_subchannel[subchannels_in_channel[i][j][k][dlev - 1][1]]
+                            new_gapsX_gap[n][i][j] -= 0.5 * od_rods[n][rod[0]][rod[1]]
+
+
+
+
+
+
+
+
 
 
 
     # gets NK - the number of gaps - from Card 3.1. Calculates the new number of gaps
 
     ngaps_tot = int(lines[findheaderinline(lines, "NK NDM2 NDM3") + 1].split()[0])
-    old_gaps_in_fa = 2 * nchn_side * (nchn_side - 1)
-
     newngaps_tot = num_sides_connect * newchn_side + inner_gaps_in_fa * fa_num
     short_gap = card2_YSIZ[newchn_side - 1]#free_sp + (dlev - 1) * pp card # dimensions for the long and short gap between assemblies
     long_gap = card2_YSIZ[2*newchn_side - 1]
@@ -530,12 +581,6 @@ def main():
                     break
         return aux
 
-    coords2 = np.zeros(nchn_side - 1, dtype=np.float64)  # the other possible coordinate is already in coords
-    coords2[0] = - bp / 2 + free_sp
-    coords2[-1] = bp / 2 - free_sp
-
-    for i in range(1, nchn_side - 2):
-        coords2[i] = coords2[i - 1] + pp
 
     rod1 = int(0)
     rod2 = int(0)
@@ -606,49 +651,6 @@ def main():
 
     nrep = 2 * newchn_side - 1
 
-    for i in range(0, inner_gaps_in_fa):
-        aux = np.float64(0)
-        if i <= inner_gaps_in_fa - newchn_side:
-            if (i + 1) % nrep == 0:
-                new_gap_dirs.append('y')
-                new_gap_connect[i][0] = newchn_side * ((i + 1) // nrep)
-                new_gap_connect[i][1] = new_gap_connect[i][0] + newchn_side
-            else:
-                if ((i + 1) % nrep) % 2 == 1:
-                    new_gap_dirs.append('x')
-                    new_gap_connect[i][0] = ((i + 1) // nrep) * newchn_side + (((i + 1) % nrep) // 2) + 1
-                    new_gap_connect[i][1] = new_gap_connect[i][0] + 1
-                else:
-                    new_gap_dirs.append('y')
-                    new_gap_connect[i][0] = ((i + 1) // nrep) * newchn_side + (((i + 1) % nrep) // 2)
-                    new_gap_connect[i][1] = new_gap_connect[i][0] + newchn_side
-
-        else:
-            new_gap_dirs.append('x')
-            new_gap_connect[i][0] = (newchn_side - 1) * newchn_side + ((i + 1) % nrep)
-            new_gap_connect[i][1] = new_gap_connect[i][0] + 1
-
-        if new_gap_dirs[i] == 'x':
-            for j in range(0, dlev):
-                search = subchannels_in_channel[new_gap_connect[i][0]-1][j][dlev - 1]
-                aux += old_gap_gap[findthechannelingaps(old_gap_connects, search, time=1) - 1]
-            new_gap_lngts[i] = new_loc_channels[new_gap_connect[i][1]-1][0] - new_loc_channels[new_gap_connect[i][0]-1][0]
-            new_loc_gaps[i][0] = new_loc_channels[new_gap_connect[i][0]-1][0] + new_sizes[new_gap_connect[i][0]-1][0]/2
-            if abs(new_loc_gaps[i][0]) < 1e-6:
-                new_loc_gaps[i][0] = 0.0
-            new_loc_gaps[i][1] = new_loc_channels[new_gap_connect[i][0]-1][1]
-
-        if new_gap_dirs[i] == 'y':
-            for j in range(0, dlev):
-                search = subchannels_in_channel[new_gap_connect[i][0]-1][dlev-1][j]
-                aux += old_gap_gap[findthechannelingaps(old_gap_connects, search, time=2) - 1]
-            new_gap_lngts[i] = new_loc_channels[new_gap_connect[i][0]-1][1] - new_loc_channels[new_gap_connect[i][1]-1][1]
-            new_loc_gaps[i][0] = new_loc_channels[new_gap_connect[i][0]-1][0]
-            new_loc_gaps[i][1] = new_loc_channels[new_gap_connect[i][0]-1][1] - new_sizes[new_gap_connect[i][0]-1][1]/2
-            if abs(new_loc_gaps[i][1]) < 1e-6:
-                new_loc_gaps[i][1] = 0.0
-
-        new_gap_gaps[i] = aux
 
     aux = int(0)
     nrep = 2 * newchn_side - 1
@@ -771,21 +773,6 @@ def main():
                     else:
                         for k in range(0, nrep1):
                             tot_gaps_guide[i][aux + k] = 1
-
-    for i in range(0, newngaps_tot):
-        if i + 1 <= acum_gaps_per_row[0]:
-            auxrow = 1
-            numinrow = i + 1
-        else:
-            for j in range(1, totrodsrow_n):
-                if (i + 1 > acum_gaps_per_row[j - 1]) and (i + 1 <= acum_gaps_per_row[j]):
-                    auxrow = j + 1
-                    numinrow = i + 1 - acum_gaps_per_row[j - 1]
-
-        auxrow_in_core_map = (auxrow - 1) // newchn_side + 1
-        # if auxrow == totrodsrow_n - 1:
-        #     tot_gap_dirs.append('x')
-    core_cent
 
 
     nono = int(lines[findheaderinline(lines, "NCHN NONO")+1].split()[2])
