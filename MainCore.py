@@ -213,6 +213,10 @@ def main():
     pp = float(l_assem[findheaderinline(l_assem, "Pin pitch") + 1].split()[0])
     pp = pp / 1000
 
+    # calculates the free space
+
+    free_sp = (bp - (nrods_side - 1) * pp) / 2
+
     # gets position of guide tubes if there are any. with the origin in top left corner of the FA,
     # the "0th" position marks the row and "1st" position, the column
 
@@ -236,12 +240,12 @@ def main():
 
     rodtype = np.zeros((fa_types, nrods), dtype=int)
     fp_diam = np.zeros(fa_types, dtype=float)
-    auxvar = int(0)
 
     fp_diam[0] = float(l_assem[findheaderinline(l_assem, "Fuel pellet diameter") + 1].split()[0])  # diam of fuel pellet
     fp_diam[0] = fp_diam[0] / 1000
     ftds[0] = float(l_assem[findheaderinline(l_assem, "Theoretical density of the fuel pellet") + 1].split()[0])
 
+    auxvar = int(0)
     if ngt[0] > 0:
 
         for i in range(ngt[0]):
@@ -302,17 +306,8 @@ def main():
     # FAs so that it has to be filtered afterwards. The reference is set in top left corner so that
     # first coordinate refers to rows and second coordinate refers to columns
 
-    core_cent = np.zeros((fa_numrow, fa_numcol, 2), dtype=float)
-
-    for i in range(fa_numcol):
-        for j in range(fa_numrow):
-            core_cent[j][i][0] = ((i+1) - 0.5 - float(fa_numcol)/2)*bp
-            core_cent[j][i][1] = (float(fa_numrow)/2 + 0.5 - (j+1))*bp
 
     # this matrix will only contain the center of the FAs
-
-    fa_cent = np.zeros((fa_num, 2), dtype=float)
-
     # stores the fuel assembly map
     # fa_transl contains an ordered list of the positions in the core array that have an actual FA
     fa_transl = np.zeros(fa_num, dtype=int)
@@ -321,6 +316,7 @@ def main():
     # core map has the core map, with the positions and the indexes
 
     core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
+    numb_core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
     cont_a = 1
     cont_b = 0
 
@@ -328,150 +324,96 @@ def main():
 
     for i in range(fa_numrow):
         linaux = (l_geo[findheaderinline(l_geo, "FUEL ASSEMBLY MAP") + 2+i].split())
+        linaux2 = lines[findheaderinline(lines, "Assembly Map") + 1 + i].split()
         for j in range(fa_numcol):
             if int(linaux[j+1]) != 0:
                 fa_transl[cont_b] = cont_a
                 fa_types_list[cont_b] = int(linaux[j+1])
-                fa_cent[cont_b] = core_cent[i][j]
                 cont_b = cont_b + 1
 
             core_map[i][j] = int(linaux[j+1])
             cont_a = cont_a + 1
-
-    # conectivity of the different subchannels
-
-    fa_connect = np.zeros((fa_numrow, fa_numcol, 2), dtype=int)
-    connect_in_row = np.zeros((fa_numrow, 2), dtype=int)
-    num_sides_connect = int(0)
-    # a matrix that stores two values for every fuel assembly. First component is valued 1 if there is another
-    # FA just rightwards and valued 0 if not. The same for the second component but it checks if there is a FA
-    # just downwards
-
-    aux1 = int(0)
-    aux2 = int(0)
-    for i in range(0, fa_numrow):
-        for j in range(0, fa_numcol):
-            if core_map[i][j] != 0:
-                if i + 1 <= fa_numrow - 1:
-                    if j + 1 <= fa_numcol - 1:
-                        if core_map[i][j + 1] != 0:
-                            fa_connect[i][j][0] = 1
-                        if core_map[i + 1][j] != 0:
-                            fa_connect[i][j][1] = 1
-
-                    else:
-                        if core_map[i + 1][j] != 0:
-                            fa_connect[i][j][1] = 1
-
-                else:
-                    if j + 1 <= fa_numcol - 1:
-                        if core_map[i][j + 1] != 0:
-                            fa_connect[i][j][0] = 1
-            aux1 += fa_connect[i][j][0]
-            aux2 += fa_connect[i][j][1]
-
-        num_sides_connect = num_sides_connect + aux1 + aux2
-        connect_in_row[i][0] = aux1
-        connect_in_row[i][1] = aux2
-        aux1 = 0
-        aux2 = 0
-
-    # local parameters in a FA
-    free_sp = (bp - (nrods_side-1)*pp)/2
+            numb_core_map[i][j] = int(linaux2[j])
 
     # now, for every FA type, generic info about channels (An, Pw, XSIZ, YSIZ) should be created
     # creates an array to store the outer diameters of the rods
 
     od_s = np.zeros((fa_types, 2), dtype=float)
-
     od_s[0][0] = fr_od[0]
-    od_s[1][0] = gt_od[0]
 
-    # print(rodtype)
+    if ngt[0] > 0:
+        od_s[0][1] = gt_od[0]
+
     od_rods = np.ones((fa_types, nrods), dtype=float)
 
     for i in range(1, fa_types):
         if ngt[i] > 0:
             for j in range(0, nrods):
+                od_rods[i][0] = fr_od[i]
+                od_rods[i][1] = gt_od[i]
                 od_rods[i][j] = od_s[rodtype[i][j]]
 
     # creates an array with the subchannels that correspond to a rod
 
-    subchannels_in_rod = np.zeros((nrods, 2, 2), dtype=int)
-    rods_for_subchannel = np.zeros((nchn, 2, 2), dtype=int)
-    contvect = np.zeros(nchn, dtype=int)
-    for i in range(0, nrods):
-        top = i+1 + i//(nchn_side-1)
-        subchannels_in_rod[i][0][0] = top
-        subchannels_in_rod[i][0][1] = top + 1
-        subchannels_in_rod[i][1][0] = top + nchn_side
-        subchannels_in_rod[i][1][1] = top + nchn_side+1
+    subchannels_in_rod = np.zeros((nrods_side, nrods_side, 2, 2), dtype=int)
+    rods_for_subchannel = np.zeros((nchn_side, nchn_side, 2, 2), dtype=int)
 
-    for i in range(0, nrods):
+    for i in range(0, nrods_side):
+        for j in range(0, nrods_side):
+            subchannels_in_rod[i][j][0][0] = i * nchn_side + 1 + j
+            subchannels_in_rod[i][j][0][1] = i * nchn_side + 2 + j
+            subchannels_in_rod[i][j][1][0] = (i + 1) * nchn_side + 1 + j
+            subchannels_in_rod[i][j][1][1] = (i + 1) * nchn_side + 2 + j
+
+    for i in range(0, nchn_side):
         for j in range(0, 2):
             for k in range(0, 2):
                 rods_for_subchannel[subchannels_in_rod[i][j][k] - 1][1-j][1-k] = i + 1
 
     # creates a matrix to store the data of the subchannels, so they can be merged afterwards
-    xsiz = np.zeros(nchn, dtype=np.float64)
-    ysiz = np.zeros(nchn, dtype=np.float64)
-    coords = np.zeros(nchn_side, dtype=np.float64)
-    new_coords = np.zeros(newchn_side, dtype=np.float64)
 
-    an = np.zeros(nchn, dtype=np.float64)
-    pw = np.zeros(nchn, dtype=np.float64)
+    xsiz = np.zeros(nchn_side, dtype=np.float64)
+    ysiz = np.zeros(nchn_side, dtype=np.float64)
+    new_xsiz = np.zeros(newchn_side, dtype=np.float64)
+    new_ysiz = np.zeros(newchn_side, dtype=np.float64)
 
-    # identifies corner, side (horizontal and vertical) and center subchannels
+    xsiz[0] = free_sp
+    ysiz[0] = free_sp
+    xsiz[-1] = free_sp
+    ysiz[-1] = free_sp
 
-    chan_corner = np.array([1, nchn_side, nchn - nchn_side + 1, nchn], dtype=int)
-    chan_sideH = np.zeros(2*(nchn_side-2), dtype=int)
-    chan_sideV = np.zeros(2*(nchn_side-2), dtype=int)
-    chan_center = np.zeros((nchn_side - 2)**2, dtype=int)
+    new_xsiz[0] = free_sp + (dlev - 1) * pp
+    new_xsiz[-1] = free_sp + (dlev - 1) * pp
+    new_ysiz[0] = free_sp + (dlev - 1) * pp
+    new_ysiz[-1] = free_sp + (dlev - 1) * pp
 
-    for i in range(0, nchn_side-2):
-        chan_sideH[i] = 2+i
-        chan_sideH[nchn_side-2+i] = nchn - nchn_side + 2 + i
-        chan_sideV[2*i] = nchn_side + 1 + i*nchn_side
-        chan_sideV[2*i+1] = 2*nchn_side + i*nchn_side
+    for i in range(1, nchn_side -1):
+        xsiz[i] = pp
+        ysiz[i] = pp
+    for i in range(1, newchn_side - 1):
+        new_xsiz[i] = dlev * pp
+        new_ysiz[i] = dlev * pp
 
-    for i in range(0, (nchn_side-2)**2):
-        chan_center[i] = nchn_side + 2 + i % (nchn_side-2) + nchn_side * (i // (nchn_side-2))
+    an = np.zeros((nchn_side, nchn_side), dtype=np.float64)
+    pw = np.zeros((nchn_side, nchn_side), dtype=np.float64)
 
     # gives values to the subchannel data
 
-    coords[0] = -bp/2 + free_sp/2
-    coords[-1] = bp/2 - free_sp/2
-
-    for i in range(1, nchn_side-1):
-        coords[i] = -bp/2 + free_sp + pp / 2 + (i-1)*pp
-
+    new_coords = np.zeros(newchn_side, dtype=np.float64)
     new_coords[0] = -bp / 2 + (free_sp + (dlev - 1) * pp) / 2
     new_coords[-1] = bp / 2 - (free_sp + (dlev - 1) * pp) / 2
 
     for i in range(1, newchn_side - 1):
-        new_coords[i] = -bp / 2 + free_sp + (dlev - 1) * pp / 2 + (i - 1) * dlev * pp
-
+        new_coords[i] = -bp / 2 + free_sp + (dlev - 1) * pp + dlev * pp / 2 + (i - 1) * dlev * pp
 
     # edits coordinate data
-
-    for i in range(0, 4):
-        xsiz[chan_corner[i]-1] = free_sp
-        ysiz[chan_corner[i]-1] = free_sp
-
-    for i in range(0, 2*(nchn_side-2)):
-        xsiz[chan_sideH[i] - 1] = pp
-        ysiz[chan_sideH[i] - 1] = free_sp
-        xsiz[chan_sideV[i] - 1] = free_sp
-        ysiz[chan_sideV[i] - 1] = pp
-
-    for i in range(0, (nchn_side-2)**2):
-        xsiz[chan_center[i] - 1] = pp
-        ysiz[chan_center[i] - 1] = pp
+    print(new_coords)
 
     # edits nominal area and wet perimeter for the channels
 
-    for i in range(0, nchn):
-        an[i] = xsiz[i]*ysiz[i]
+    for i in range(0, nchn_side):
+        for j in range(0, nchn_side):
+            an[i][j] = xsiz[j]*ysiz[i]
 
     for i in range(0, nrods):
         for j in range(0, 2):
@@ -502,37 +444,24 @@ def main():
     # new channel data
 
     new_an_pw = np.zeros((fa_types, newchn, 2), dtype=np.float64)
-    new_sizes = np.zeros((newchn, 2))
-    new_loc_channels = np.zeros((newchn, 2))
+    new_sizes = np.zeros(newchn_side, dtype=np.float64)
+
+    new_sizes[1] = free_sp + (dlev - 1) * pp
+    new_sizes[-1] = free_sp + (dlev - 1) * pp
+    for i in range(1, newchn_side - 1):
+        new_sizes[i] = dlev * pp
 
     for i in range(0, subchannels_in_channel.shape[0]):
         aux1 = 0
         aux2 = 0
-        aux_x = 0
-        aux_y = 0
         for j in range(0, subchannels_in_channel.shape[1]):
             for k in range(0,  subchannels_in_channel.shape[2]):
                 aux1 += an[int(subchannels_in_channel[i][j][k])-1]
                 aux2 += pw[int(subchannels_in_channel[i][j][k])-1]
-                if j == 0:
-                    aux_x += xsiz[int(subchannels_in_channel[i][j][k])-1]
-                if k == 0:
-                    aux_y += ysiz[int(subchannels_in_channel[i][j][k])-1]
 
         new_an_pw[0][i][0] = aux1
         new_an_pw[0][i][1] = aux2
-        new_sizes[i][0] = aux_x
-        new_sizes[i][1] = aux_y
-        if i == 0:
-            new_loc_channels[0][0] = -bp/2 + new_sizes[0][0]/2
-            new_loc_channels[0][1] = bp/2 - new_sizes[0][1]/2
-        else:
-            if ((i-1) // nchn_side) == (i // nchn_side):
-                new_loc_channels[i][0] = new_loc_channels[i-1][0] + (new_sizes[i-1][0] + new_sizes[i][0])/2
-                new_loc_channels[i][1] = new_loc_channels[i-1][1]
-            else:
-                new_loc_channels[i][0] = new_loc_channels[i-nchn_side][0]
-                new_loc_channels[i][1] = new_loc_channels[i-nchn_side][1] - (new_sizes[i-nchn_side][1]+new_sizes[i][1])/2
+
 
     # creates data for the new channels
 
@@ -577,7 +506,8 @@ def main():
             acum_newchn_in_core_row[i] = acum_newchn_in_core_row[i-1] + newchn_in_core_row[i]
             acum_newchn_in_fa_row[i] = acum_newchn_in_fa_row[i-1] + newchn_in_fa_row[i]
 
-    for i in range(0, newchn_tot):
+
+    for i in range(0, totro):
         card2_chan[i] = i+1
         # TODO some lines should be added here so as to change the channel data depending on the type of the fa
         auxrow = 1
