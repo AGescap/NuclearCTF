@@ -235,8 +235,8 @@ def main():
     gapcond[0] = float(l_assem[findheaderinline(l_assem, "Constant gap conductance")+1].split()[0])
     gtpos = np.zeros((fa_types, nrods, 2), dtype=int)
     ftds = np.zeros(fa_types, dtype=float)
-    gt_id = np.zeros(fa_types, dtype=int)
-    gt_od = np.zeros(fa_types, dtype=int)
+    gt_id = np.zeros(fa_types, dtype=float)
+    gt_od = np.zeros(fa_types, dtype=float)
 
     rodtype = np.zeros((fa_types, nrods_side, nrods_side), dtype=int)
     fp_diam = np.zeros(fa_types, dtype=float)
@@ -259,6 +259,7 @@ def main():
         gt_id[0] = gt_id[0] / 1000
         gt_mat.append(l_assem[findheaderinline(l_assem, "Guide tube/water rod material") + 1].split()[0])
 
+        print(gt_od[0])
     else:
         gt_mat.append("X")
 
@@ -270,6 +271,8 @@ def main():
             ngt[i + 1] = int(l_extra_fa[findheaderinline(l_extra_fa, "Number of guide tubes/water rods",
                                                          time=i+1) + 1].split()[0])
             ftds[i + 1] = float(l_extra_fa[findheaderinline(l_extra_fa, "Theoretical density of the fuel pellet",
+                                                            time=i+1) + 1].split()[0])
+            gapcond[i + 1] = float(l_extra_fa[findheaderinline(l_extra_fa, "Constant gap conductance",
                                                             time=i+1) + 1].split()[0])
             fr_clad_mat.append(l_extra_fa[findheaderinline(l_extra_fa, "Cladding material", time=i+1) + 1].split()[0])
             if ngt[i + 1] > 0:
@@ -292,7 +295,6 @@ def main():
             else:
                 gt_mat.append("X")
 
-    print(rodtype[0])
     # creates absolute coordinates for the center of the different FAs. They are created for both empty-water-
     # FAs so that it has to be filtered afterwards. The reference is set in top left corner so that
     # first coordinate refers to rows and second coordinate refers to columns
@@ -304,11 +306,12 @@ def main():
 
     core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
     numb_core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
-    cont_a = 1
-    cont_b = 0
+
 
     # edit fa_transl, edit core_map
 
+    cont_a = 1
+    cont_b = 0
     for i in range(fa_numrow):
         linaux = (l_geo[findheaderinline(l_geo, "FUEL ASSEMBLY MAP") + 2+i].split())
         linaux2 = lines[findheaderinline(lines, "Assembly Map") + 1 + i].split()
@@ -329,16 +332,17 @@ def main():
 
     if ngt[0] > 0:
         od_s[0][1] = gt_od[0]
+
     od_rods = np.ones((fa_types, nrods_side, nrods_side), dtype=float)
 
-    for i in range(1, fa_types):
+    for i in range(0, fa_types):
+        od_s[i][0] = fr_od[i]
         if ngt[i] > 0:
-            for j in range(0, nrods_side, nrods_side):
-                od_rods[i][0] = fr_od[i]
-                od_rods[i][1] = gt_od[i]
-                od_rods[i][j] = od_s[rodtype[i][j]]
+            od_s[i][1] = gt_od[i]
+        for j in range(0, nrods_side):
+            for k in range(0, nrods_side):
+                od_rods[i][j][k] = od_s[i][rodtype[i][j][k]]
 
-    print(od_rods)
     # creates an array with the subchannels that correspond to a rod
 
     subchannels_in_rod = np.zeros((nrods_side, nrods_side, 2, 2, 2), dtype=int)
