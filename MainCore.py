@@ -238,22 +238,20 @@ def main():
     gt_id = np.zeros(fa_types, dtype=int)
     gt_od = np.zeros(fa_types, dtype=int)
 
-    rodtype = np.zeros((fa_types, nrods), dtype=int)
+    rodtype = np.zeros((fa_types, nrods_side, nrods_side), dtype=int)
     fp_diam = np.zeros(fa_types, dtype=float)
 
     fp_diam[0] = float(l_assem[findheaderinline(l_assem, "Fuel pellet diameter") + 1].split()[0])  # diam of fuel pellet
     fp_diam[0] = fp_diam[0] / 1000
     ftds[0] = float(l_assem[findheaderinline(l_assem, "Theoretical density of the fuel pellet") + 1].split()[0])
 
-    auxvar = int(0)
     if ngt[0] > 0:
 
         for i in range(ngt[0]):
             linaux = l_assem[findheaderinline(l_assem, "Use X Y format") + 1+i].split()
             gtpos[0][i][0] = int(linaux[0])
             gtpos[0][i][1] = int(linaux[1])
-            auxvar = nrods_side*(gtpos[0][i][0]-1) + gtpos[0][i][1] - 1
-            rodtype[0][auxvar] = 1
+            rodtype[0][int(linaux[0])][int(linaux[1])] = 1
 
         gt_od[0] = float(l_assem[findheaderinline(l_assem, "Outer diameter of guide tube/water rod") + 1].split()[0])
         gt_od[0] = gt_od/1000
@@ -288,8 +286,7 @@ def main():
                                                          time=i+1) + 1+j].split()
                     gtpos[i + 1][j][0] = int(linaux[0])
                     gtpos[i + 1][j][1] = int(linaux[1])
-                    auxvar = nrods_side*(gtpos[i + 1][j][0]-1) + gtpos[i + 1][j][1] - 1
-                    rodtype[i + 1][auxvar] = 1
+                    rodtype[i + 1][int(linaux[0])][int(linaux[1])] = 1
 
             else:
                 gt_mat.append("X")
@@ -306,11 +303,7 @@ def main():
     # FAs so that it has to be filtered afterwards. The reference is set in top left corner so that
     # first coordinate refers to rows and second coordinate refers to columns
 
-
-    # this matrix will only contain the center of the FAs
-    # stores the fuel assembly map
     # fa_transl contains an ordered list of the positions in the core array that have an actual FA
-    fa_transl = np.zeros(fa_num, dtype=int)
     fa_types_list = np.zeros(fa_num, dtype=int)
 
     # core map has the core map, with the positions and the indexes
@@ -327,7 +320,6 @@ def main():
         linaux2 = lines[findheaderinline(lines, "Assembly Map") + 1 + i].split()
         for j in range(fa_numcol):
             if int(linaux[j+1]) != 0:
-                fa_transl[cont_b] = cont_a
                 fa_types_list[cont_b] = int(linaux[j+1])
                 cont_b = cont_b + 1
 
@@ -344,31 +336,37 @@ def main():
     if ngt[0] > 0:
         od_s[0][1] = gt_od[0]
 
-    od_rods = np.ones((fa_types, nrods), dtype=float)
+    od_rods = np.ones((fa_types, nrods_side, nrods_side), dtype=float)
 
     for i in range(1, fa_types):
         if ngt[i] > 0:
-            for j in range(0, nrods):
+            for j in range(0, nrods_side, nrods_side):
                 od_rods[i][0] = fr_od[i]
                 od_rods[i][1] = gt_od[i]
                 od_rods[i][j] = od_s[rodtype[i][j]]
 
     # creates an array with the subchannels that correspond to a rod
 
-    subchannels_in_rod = np.zeros((nrods_side, nrods_side, 2, 2), dtype=int)
+    subchannels_in_rod = np.zeros((nrods_side, nrods_side, 2, 2, 2), dtype=int)
     rods_for_subchannel = np.zeros((nchn_side, nchn_side, 2, 2), dtype=int)
 
     for i in range(0, nrods_side):
         for j in range(0, nrods_side):
-            subchannels_in_rod[i][j][0][0] = i * nchn_side + 1 + j
-            subchannels_in_rod[i][j][0][1] = i * nchn_side + 2 + j
-            subchannels_in_rod[i][j][1][0] = (i + 1) * nchn_side + 1 + j
-            subchannels_in_rod[i][j][1][1] = (i + 1) * nchn_side + 2 + j
+            subchannels_in_rod[i][j][0][0] = [i, j]
+            subchannels_in_rod[i][j][0][1] = [i, j + 1]
+            subchannels_in_rod[i][j][1][0] = [i + 1, j]
+            subchannels_in_rod[i][j][1][1] = [i + 1, j + 1]
 
     for i in range(0, nchn_side):
-        for j in range(0, 2):
-            for k in range(0, 2):
-                rods_for_subchannel[subchannels_in_rod[i][j][k] - 1][1-j][1-k] = i + 1
+        for j in range(0, nchn_side):
+            if i != 0:
+                if i != nchn_side - 1:
+                    if j != 0:
+                        if j != nchn_side - 1:
+                            rods_for_subchannel[i][j]
+            rods_for_subchannel[i][j][0][0] =
+
+
 
     # creates a matrix to store the data of the subchannels, so they can be merged afterwards
 
@@ -415,11 +413,7 @@ def main():
         for j in range(0, nchn_side):
             an[i][j] = xsiz[j]*ysiz[i]
 
-    for i in range(0, nrods):
-        for j in range(0, 2):
-            for k in range(0, 2):
-                an[subchannels_in_rod[i][j][k]-1] -= math.pi/4 * (od_rods[i]**2) * 0.25
-                pw[subchannels_in_rod[i][j][k]-1] += math.pi * od_rods[i] * 0.25
+
 
     # creates an array that stores the number of subchannels that belong to the new channel
     subchannels_in_channel = np.zeros((newchn, dlev, dlev), dtype=int)
@@ -443,14 +437,20 @@ def main():
 
     # new channel data
 
-    new_an_pw = np.zeros((fa_types, newchn, 2), dtype=np.float64)
+    new_an_pw = np.zeros((fa_types, newchn_side, newchn_side, 2), dtype=np.float64)
     new_sizes = np.zeros(newchn_side, dtype=np.float64)
-
     new_sizes[1] = free_sp + (dlev - 1) * pp
     new_sizes[-1] = free_sp + (dlev - 1) * pp
+
     for i in range(1, newchn_side - 1):
         new_sizes[i] = dlev * pp
 
+    for n in range(0, fa_types):
+        for i in range(0, nrods):
+            for j in range(0, 2):
+                for k in range(0, 2):
+                    an[subchannels_in_rod[i][j][k] - 1] -= math.pi / 4 * (od_rods[n][i] ** 2) * 0.25
+                    pw[subchannels_in_rod[i][j][k] - 1] += math.pi * od_rods[n][i] * 0.25
     for i in range(0, subchannels_in_channel.shape[0]):
         aux1 = 0
         aux2 = 0
@@ -461,7 +461,6 @@ def main():
 
         new_an_pw[0][i][0] = aux1
         new_an_pw[0][i][1] = aux2
-
 
     # creates data for the new channels
 
