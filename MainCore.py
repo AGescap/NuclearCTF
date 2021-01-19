@@ -511,7 +511,7 @@ def main():
                 new_an_pw[n][i][j][0] = aux1
                 new_an_pw[n][i][j][1] = aux2
 
-    rod = np.zeros(2, dtype=int)
+    rod = np.zeros((2, 2), dtype=int)
     auxsubch = np.zeros(2, dtype=int)
     for n in range(0, fa_types):
         for i in range(0, newchn_side):
@@ -521,66 +521,63 @@ def main():
                         new_gapsX_gap[n][i][j] = new_sizes[i]
                         new_gapsY_gap[n][i][j] = new_sizes[j]
                         for k in range(0, dlev):
-                            for l in range(0, 2):
-                                auxsubch = [subchannels_in_channel[i][j][k][dlev - 1][0], subchannels_in_channel[i][j][k][dlev - 1][1]]
-                                print(auxsubch)
-                                rod[0] = rods_for_subchannel[auxsubch[0], auxsubch[1]]
-                                if rod[0] != -1:
-                                    rod[1] = rods_for_subchannel[subchannels_in_channel[i][j][k][dlev - 1][1]]
-                                    new_gapsX_gap[n][i][j] -= 0.5* od_rods[n][rod[0]][rod[1]]
+                            auxsubch = [subchannels_in_channel[i][j][k][dlev - 1][0],
+                                        subchannels_in_channel[i][j][k][dlev - 1][1]]
 
-                                rod[0] = rods_for_subchannel[subchannels_in_channel[i][j][dlev - 1][k][0]]
-                                if rod[0] != -1:
-                                    rod[1] = rods_for_subchannel[subchannels_in_channel[i][j][dlev - 1][k][1]]
-                                    new_gapsY_gap[n][i][j] -= 0.5 * od_rods[n][rod[0]][rod[1]]
+                            for l in range(0, 2):
+
+                                rod[l][0] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][l][1][0]
+                                if rod[l][0] != -1:
+                                    rod[l][1] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][l][1][1]
+                                    new_gapsX_gap[n][i][j] -= 0.5 * od_rods[n][rod[l][0]][rod[l][1]]
+
+                            auxsubch = [subchannels_in_channel[i][j][dlev - 1][k][0],
+                                        subchannels_in_channel[i][j][dlev - 1][k][1]]
+
+                            for l in range(0, 2):
+
+                                rod[l][0] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][1][l][0]
+                                if rod[l][0] != -1:
+                                    rod[l][1] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][1][l][1]
+                                    new_gapsY_gap[n][i][j] -= 0.5 * od_rods[n][rod[l][0]][rod[l][1]]
 
                     else:
                         new_gapsY_gap[n][i][j] = new_sizes[j]
                         for k in range(0, dlev):
-                            rod[0] = rods_for_subchannel[subchannels_in_channel[i][j][dlev - 1][k][0]]
-                            if rod[0] != -1:
-                                rod[1] = rods_for_subchannel[subchannels_in_channel[i][j][dlev - 1][k][1]]
-                                new_gapsY_gap[n][i][j] -= 0.5 * od_rods[n][rod[0]][rod[1]]
+                            auxsubch = [subchannels_in_channel[i][j][dlev - 1][k][0],
+                                        subchannels_in_channel[i][j][dlev - 1][k][1]]
+
+                            for l in range(0, 2):
+
+                                rod[l][0] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][1][l][0]
+                                if rod[l][0] != -1:
+                                    rod[l][1] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][1][l][1]
+                                    new_gapsY_gap[n][i][j] -= 0.5 * od_rods[n][rod[l][0]][rod[l][1]]
+
                 else:
-                    new_gapsX_gap[n][i][j] = new_sizes[i]
-                    for k in range(0, dlev):
-                        rod[0] = rods_for_subchannel[subchannels_in_channel[i][j][k][dlev - 1][0]]
-                        if rod[0] != -1:
-                            rod[1] = rods_for_subchannel[subchannels_in_channel[i][j][k][dlev - 1][1]]
-                            new_gapsX_gap[n][i][j] -= 0.5 * od_rods[n][rod[0]][rod[1]]
+                    if j != newchn_side - 1:
+                        new_gapsX_gap[n][i][j] = new_sizes[i]
+                        for k in range(0, dlev):
+                            auxsubch = [subchannels_in_channel[i][j][k][dlev - 1][0],
+                                        subchannels_in_channel[i][j][k][dlev - 1][1]]
 
+                            for l in range(0, 2):
 
-
-
-
-
-
-
+                                rod[l][0] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][l][1][0]
+                                if rod[l][0] != -1:
+                                    rod[l][1] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][l][1][1]
+                                    new_gapsX_gap[n][i][j] -= 0.5 * od_rods[n][rod[l][0]][rod[l][1]]
 
 
 
     # gets NK - the number of gaps - from Card 3.1. Calculates the new number of gaps
 
     ngaps_tot = int(lines[findheaderinline(lines, "NK NDM2 NDM3") + 1].split()[0])
-    newngaps_tot = num_sides_connect * newchn_side + inner_gaps_in_fa * fa_num
-    short_gap = card2_YSIZ[newchn_side - 1]#free_sp + (dlev - 1) * pp card # dimensions for the long and short gap between assemblies
-    long_gap = card2_YSIZ[2*newchn_side - 1]
+
+    #short_gap = card2_YSIZ[newchn_side - 1]#free_sp + (dlev - 1) * pp card # dimensions for the long and short gap between assemblies
+    #long_gap = card2_YSIZ[2*newchn_side - 1]
 
     # Creates gap data. First it creates gap data for a single assembly (in the future, for every type of assembly)
-
-    def findthechannelingaps(vgaps, val, time=1):
-        # finds the first channel with number of channel val in the vector of gaps and returns the number of gap
-        aux = 0
-        clock = 1
-        for i in range(0, old_gaps_in_fa):
-            if vgaps[i][0] == val:
-                if clock < time:
-                    clock = clock +1
-                else:
-                    aux = i+1
-                    break
-        return aux
-
 
     rod1 = int(0)
     rod2 = int(0)
