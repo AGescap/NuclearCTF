@@ -213,9 +213,18 @@ def main():
     pp = float(l_assem[findheaderinline(l_assem, "Pin pitch") + 1].split()[0])
     pp = pp / 1000
 
-    # calculates the free space
+    # defines useful magnitudes
 
     free_sp = (bp - (nrods_side - 1) * pp) / 2
+    inner_gaps_in_fa = 2 * newchn_side * (newchn_side - 1)
+    totrodsrow_n = fa_numrow * newchn_side
+    totrodscol_n = fa_numcol * newchn_side
+    totchansrow_n = totrodsrow_n
+    totchanscol_n = totrodscol_n
+    linaux = lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL") + 1].split()
+    totrodsrow_o = int(linaux[0])
+    linaux = lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL") + 1].split()
+    totchansrow_o = int(linaux[0])
 
     # gets position of guide tubes if there are any. with the origin in top left corner of the FA,
     # the "0th" position marks the row and "1st" position, the column
@@ -307,7 +316,6 @@ def main():
     core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
     numb_core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
 
-
     # edit fa_transl, edit core_map
 
     cont_a = 1
@@ -346,7 +354,7 @@ def main():
     # creates an array with the subchannels that correspond to a rod
 
     subchannels_in_rod = np.zeros((nrods_side, nrods_side, 2, 2, 2), dtype=int)
-    rods_for_subchannel = np.zeros((nchn_side, nchn_side, 2, 2), dtype=int)
+    rods_for_subchannel = -1 * np.ones((nchn_side, nchn_side, 2, 2, 2), dtype=int)
 
     for i in range(0, nrods_side):
         for j in range(0, nrods_side):
@@ -361,10 +369,41 @@ def main():
                 if i != nchn_side - 1:
                     if j != 0:
                         if j != nchn_side - 1:
-                            rods_for_subchannel[i][j]
-            rods_for_subchannel[i][j][0][0] = 3
+                            rods_for_subchannel[i][j][0][0] = [i - 1, j - 1]
+                            rods_for_subchannel[i][j][0][1] = [i - 1, j]
+                            rods_for_subchannel[i][j][1][0] = [i, j - 1]
+                            rods_for_subchannel[i][j][1][1] = [i, j]
+                        else:
+                            rods_for_subchannel[i][j][0][0] = [i - 1, j - 1]
+                            rods_for_subchannel[i][j][1][0] = [i, j - 1]
 
+                    else:
+                        rods_for_subchannel[i][j][0][1] = [i - 1, j]
+                        rods_for_subchannel[i][j][1][1] = [i, j]
 
+                else:
+                    if j != 0:
+                        if j != nchn_side - 1:
+                            rods_for_subchannel[i][j][0][0] = [i - 1, j - 1]
+                            rods_for_subchannel[i][j][0][1] = [i - 1, j]
+
+                        else:
+                            rods_for_subchannel[i][j][0][0] = [i - 1, j - 1]
+
+                    else:
+                        rods_for_subchannel[i][j][0][1] = [i - 1, j]
+
+            else:
+                if j != 0:
+                    if j != nchn_side - 1:
+                        rods_for_subchannel[i][j][1][0] = [i, j - 1]
+                        rods_for_subchannel[i][j][1][1] = [i, j]
+
+                    else:
+                        rods_for_subchannel[i][j][1][0] = [i, j - 1]
+
+                else:
+                    rods_for_subchannel[i][j][1][1] = [i, j]
 
     # creates a matrix to store the data of the subchannels, so they can be merged afterwards
 
@@ -383,9 +422,10 @@ def main():
     new_ysiz[0] = free_sp + (dlev - 1) * pp
     new_ysiz[-1] = free_sp + (dlev - 1) * pp
 
-    for i in range(1, nchn_side -1):
+    for i in range(1, nchn_side - 1):
         xsiz[i] = pp
         ysiz[i] = pp
+
     for i in range(1, newchn_side - 1):
         new_xsiz[i] = dlev * pp
         new_ysiz[i] = dlev * pp
@@ -394,7 +434,8 @@ def main():
     an_0 = np.zeros((nchn_side, nchn_side), dtype=np.float64)
     for i in range(0, nchn_side):
         for j in range(0, nchn_side):
-            an[i][j] = xsiz[j] * ysiz[i]
+            an_0[i][j] = xsiz[j] * ysiz[i]
+
     pw = np.zeros((nchn_side, nchn_side), dtype=np.float64)
 
     # gives values to the subchannel data
@@ -407,8 +448,6 @@ def main():
         new_coords[i] = -bp / 2 + free_sp + (dlev - 1) * pp + dlev * pp / 2 + (i - 1) * dlev * pp
 
     # edits nominal area and wet perimeter for the channels
-
-
 
     # creates an array that stores the number of subchannels that belong to the new channel
     subchannels_in_channel = np.zeros((newchn_side, newchn_side, dlev, dlev, 2), dtype=int)
@@ -431,6 +470,7 @@ def main():
 
     # new channel data
 
+
     new_an_pw = np.zeros((fa_types, newchn_side, newchn_side, 2), dtype=np.float64)
     new_sizes = np.zeros(newchn_side, dtype=np.float64)
     new_sizes[1] = free_sp + (dlev - 1) * pp
@@ -446,126 +486,31 @@ def main():
             for j in range(0, nrods_side):
                 for k in range(0, 2):
                     for l in range(0, 2):
-                        an[subchannels_in_rod[i][j][k] - 1] -= math.pi / 4 * (od_rods[n][i] ** 2) * 0.25
-                        pw[subchannels_in_rod[i][j][k] - 1] += math.pi * od_rods[n][i] * 0.25
-    for i in range(0, subchannels_in_channel.shape[0]):
-        aux1 = 0
-        aux2 = 0
-        for j in range(0, subchannels_in_channel.shape[1]):
-            for k in range(0,  subchannels_in_channel.shape[2]):
-                aux1 += an[int(subchannels_in_channel[i][j][k])-1]
-                aux2 += pw[int(subchannels_in_channel[i][j][k])-1]
+                        an[subchannels_in_rod[i][j][k][l][0]][subchannels_in_rod[i][j][k][l][1]] -= math.pi / 4 * \
+                                                                                                    (od_rods[n][i][j] ** 2) * 0.25
+                        pw[subchannels_in_rod[i][j][k][l][0]][subchannels_in_rod[i][j][k][l][1]] += math.pi * \
+                                                                                                    od_rods[n][i][j] * 0.25
 
-        new_an_pw[0][i][0] = aux1
-        new_an_pw[0][i][1] = aux2
+        for i in range(0, newchn_side):
+            for j in range(0, newchn_side):
+                aux1 = 0
+                aux2 = 0
+                for k in range(0, dlev):
+                    for l in range(0,  dlev):
+                        aux1 += an[int(subchannels_in_channel[i][j][k][l][0])][int(subchannels_in_channel[i][j][k][l][1])]
+                        aux2 += pw[int(subchannels_in_channel[i][j][k][l][0])][int(subchannels_in_channel[i][j][k][l][1])]
 
-    # creates data for the new channels
-
-    channelsindextot = np.zeros(newchn_tot, dtype=int)
-    for i in range(0, newchn_tot):
-        channelsindextot[i] = (i+1)
-
-    assemb_in_row = np.zeros(fa_numrow, dtype=int)
-    acum_assemb_in_row = np.zeros(fa_numrow, dtype=int)
-    newchn_in_core_row = np.zeros(fa_numrow, dtype=int)
-    acum_newchn_in_core_row = np.zeros(fa_numrow, dtype=int)
-    newchn_in_fa_row = np.zeros(fa_numrow, dtype=int)
-    acum_newchn_in_fa_row = np.zeros(fa_numrow, dtype=int)
-    # defines the magnitudes for the Card 2 to be edited and written
-
-    card2_chan = np.zeros(newchn_tot, dtype=int)
-    card2_an = np.zeros(newchn_tot, dtype=np.float64)
-    card2_pw = np.zeros(newchn_tot, dtype=np.float64)
-    card2_X = np.zeros(newchn_tot, dtype=np.float64)
-    card2_Y = np.zeros(newchn_tot, dtype=np.float64)
-    card2_XSIZ = np.zeros(newchn_tot, dtype=np.float64)
-    card2_YSIZ = np.zeros(newchn_tot, dtype=np.float64)
-
-    for i in range(0, fa_numrow):
-        auxvar = 0
-        for j in range(0, fa_numcol):
-            if core_map[i][j] != 0:
-                auxvar += 1
-
-        assemb_in_row[i] = auxvar
-        newchn_in_core_row[i] = auxvar * newchn_side
-        newchn_in_fa_row[i] = auxvar * newchn
-
-        if i == 0:
-
-            acum_assemb_in_row[i] = assemb_in_row[i]
-            acum_newchn_in_core_row[i] = newchn_in_core_row[i]
-            acum_newchn_in_fa_row[i] = newchn_in_fa_row[i]
-
-        else:
-            acum_assemb_in_row[i] = acum_assemb_in_row[i-1] + assemb_in_row[i]
-            acum_newchn_in_core_row[i] = acum_newchn_in_core_row[i-1] + newchn_in_core_row[i]
-            acum_newchn_in_fa_row[i] = acum_newchn_in_fa_row[i-1] + newchn_in_fa_row[i]
+                new_an_pw[n][i][j][0] = aux1
+                new_an_pw[n][i][j][1] = aux2
 
 
-    for i in range(0, totro):
-        card2_chan[i] = i+1
-        # TODO some lines should be added here so as to change the channel data depending on the type of the fa
-        auxrow = 1
 
-        for j in range(1, fa_numrow):
-            if i+1 > acum_newchn_in_fa_row[j-1] and i+1 <=  acum_newchn_in_fa_row[j]:
-                auxrow = j+1
-
-            else:
-                if i + 1 <= acum_newchn_in_fa_row[0]:
-                    auxrow = 1
-
-        if auxrow == 1:
-            chanreset = i + 1
-
-        else:
-            chanreset = i + 1 - acum_newchn_in_fa_row[auxrow-2]
-
-        auxrow2 = ((chanreset - 1) // newchn_in_core_row[auxrow - 1]) + 1
-        chanreset2 = chanreset - newchn_in_core_row[auxrow - 1] * (auxrow2 - 1)
-        aux_fa = int(((chanreset2 - 1) // newchn_side) + 1)
-        chanreset3 = chanreset2 - (aux_fa - 1) * newchn_side
-        # aux_fatype = core_map[auxrow - 1][aux_fa - 1]
-        index_in_fa = chanreset3 + (auxrow2 - 1) * newchn_side
-        card2_an[i] = new_an_pw[0][index_in_fa - 1][0]
-        card2_pw[i] = new_an_pw[0][index_in_fa - 1][1]
-        card2_XSIZ[i] = new_sizes[index_in_fa - 1][0]
-        card2_YSIZ[i] = new_sizes[index_in_fa - 1][1]
-
-        if auxrow == 1:
-            card2_X[i] = new_loc_channels[index_in_fa - 1][0] + fa_cent[aux_fa - 1][0]
-            card2_Y[i] = new_loc_channels[index_in_fa - 1][1] + fa_cent[aux_fa - 1][1]
-
-        else:
-            card2_X[i] = new_loc_channels[index_in_fa - 1][0] + fa_cent[acum_assemb_in_row[auxrow - 2] + aux_fa - 1][
-                0]
-            card2_Y[i] = new_loc_channels[index_in_fa - 1][1] + fa_cent[acum_assemb_in_row[auxrow - 2] + aux_fa - 1][
-                1]
-
-    # sets a new origin in the numeration for the channels
-
-    if ngt > 0:
-        print(gtpos)
-
-    # creates TOTRODSROW TOTRODSCOL TOTCHANSROW TOTCHANSCOL
-
-    totrodsrow_n = fa_numrow * newchn_side
-    totrodscol_n = fa_numcol * newchn_side
-    totchansrow_n = totrodsrow_n
-    totchanscol_n = totrodscol_n
-    linaux = lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL") + 1].split()
-    totrodsrow_o = int(linaux[0])
-    totrodscol_o = int(linaux[1])
-    linaux = lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL") + 1].split()
-    totchansrow_o = int(linaux[0])
-    totchanscol_o = int(linaux[1])
 
     # gets NK - the number of gaps - from Card 3.1. Calculates the new number of gaps
 
     ngaps_tot = int(lines[findheaderinline(lines, "NK NDM2 NDM3") + 1].split()[0])
     old_gaps_in_fa = 2 * nchn_side * (nchn_side - 1)
-    inner_gaps_in_fa = 2 * newchn_side * (newchn_side-1)
+
     newngaps_tot = num_sides_connect * newchn_side + inner_gaps_in_fa * fa_num
     short_gap = card2_YSIZ[newchn_side - 1]#free_sp + (dlev - 1) * pp card # dimensions for the long and short gap between assemblies
     long_gap = card2_YSIZ[2*newchn_side - 1]
