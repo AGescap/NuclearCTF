@@ -9,7 +9,7 @@ The mentioned script will only represent a fuel element
 The purpose here is more general: to homogenize a CTF core input, also made with CTF preprocessor
 ### Variables list:
  * bp = bundle pitch, gets converted into m. Scalar <br/>
- * coords = coordinates along an axis for the subchannels in every FA before homogenization. Vector (nchn_side, 1) <br/>
+ * core_map = 2-D array. [i][j] where [i] = row, [j] = col is the type of fuel assembly, and zero if it is a "water" FA. Different from core_map . 2-D array <br/>
  * dlev = level of discretization. nchn_side must be a multiple of it. Scalar <br/>
  * fa_num = number of fuel assemblies, without counting the ones filled with water. Scalar <br/>
  * fa_numcol = number of columns in the FA array in the core. Scalar <br/>
@@ -26,8 +26,9 @@ The purpose here is more general: to homogenize a CTF core input, also made with
  * newcoords = coordinates along an axis for the channels in every FA after homogenization. Vector (nchn_side, 1) <br/>
  * ngt = number of guide tubes / water rods in each type of FA. Vector (fa_types, 1) <br/>
  * nrods = number of rods for every FA. The number of rods per side is thus nrods_side = sqrt(nrods). Scalar <br/>
+ * numb_core_map = 2-D array. [i][j] where [i] = row, [j] = col is the number of fuel assembly, and zero if it is a "water" FA. Different from core_map . 2-D array <br/>
  * pp = pin pitch, gets converted into m. Scalar <br/>
- * subchannels_in_rod: 3-D tensor. for every rod [i] it stores the number of the channel in top left ([i][0][0]), top right ([i][0][1]), bottom left ([i][0][1]) and bottom right
- ([i][0][1]). 3-D tensor (nrods, 2, 2) <br/>
+ * subchannels_in_rod: 3-D array. for every rod [i] it stores the number of the channel in top left ([i][0][0]), top right ([i][0][1]), bottom left ([i][0][1]) and bottom right
+ ([i][0][1]). 3-D array (nrods, 2, 2) <br/>
 
 
