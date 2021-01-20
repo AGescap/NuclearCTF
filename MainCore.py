@@ -597,55 +597,6 @@ def main():
     tot_gap_lngts = np.zeros(newngaps_tot, dtype=np.float64)
     tot_gap_dirs = []
 
-    nrep = 2 * nchn_side - 1
-
-    for i in range(0, old_gaps_in_fa):
-        if i <= old_gaps_in_fa - nchn_side:
-            if (i + 1) % nrep == 0:
-                oldgap_type.append('y')
-                old_gap_connects[i][0] = nchn_side*((i+1) // nrep)
-                old_gap_connects[i][1] = old_gap_connects[i][0] + nchn_side
-                old_gap_gap[i] = free_sp
-                rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][0]
-                old_gap_gap[i] -= 0.5 * od_rods[rod1 - 1]
-
-            else:
-                if ((i+1) % nrep) % 2 == 1:
-                    oldgap_type.append('x')
-                    old_gap_connects[i][0] = ((i+1) // nrep) * nchn_side + (((i+1) % nrep) // 2) + 1
-                    old_gap_connects[i][1] = old_gap_connects[i][0] + 1
-                    if i + 1 <= nrep:
-                        old_gap_gap[i] = free_sp
-                        rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][1]
-                        old_gap_gap[i] -= 0.5 * od_rods[rod1 - 1]
-                    else:
-                        old_gap_gap[i] = pp
-                        rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][0][1]
-                        rod2 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][1]
-                        old_gap_gap[i] -= 0.5 * (od_rods[rod1 - 1] + od_rods[rod2 - 1])
-
-                else:
-                    oldgap_type.append('y')
-                    old_gap_connects[i][0] = ((i + 1) // nrep) * nchn_side + (((i + 1) % nrep) // 2)
-                    old_gap_connects[i][1] = old_gap_connects[i][0] + nchn_side
-                    if (i + 1) % nrep == 2:
-                        old_gap_gap[i] = free_sp
-                        rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][1]
-                        old_gap_gap[i] -= 0.5 * od_rods[rod1 - 1]
-                    else:
-                        old_gap_gap[i] = pp
-                        rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][0]
-                        rod2 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][1]
-                        old_gap_gap[i] -= 0.5 * (od_rods[rod1 - 1] + od_rods[rod2 - 1])
-
-        else:
-            oldgap_type.append('x')
-            old_gap_connects[i][0] = (nchn_side-1) * nchn_side + ((i + 1) % nrep)
-            old_gap_connects[i][1] = old_gap_connects[i][0] + 1
-            old_gap_gap[i] = free_sp
-            rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][0][1]
-            old_gap_gap[i] -= 0.5 * od_rods[rod1 - 1]
-
     nrep = 2 * newchn_side - 1
 
 
@@ -924,8 +875,8 @@ def main():
 
     line_aux = lines[findheaderinline(lines, "NRT1 NST1", time=1) + 1].split()
     line_aux[1] = str(newnrod_tot)
-    line_aux = '     ' + '    '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
-    lines[findheaderinline(lines, "NRT1 NST1", time=1) + 1] = line_aux  # stores the modified line into its position
+    line_aux = '     ' + '    '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "NRT1 NST1", time=1) + 1] = line_aux
 
     # Deletes excess of lines in Card 8.7
 
@@ -936,12 +887,12 @@ def main():
         for i in range(0, 12 - (newnrod_tot % 12)):
             line_aux[-i - 1] = "  "
 
-        line_aux = '     ' + '     '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
+        line_aux = '     ' + '     '.join(line_aux) + '\n'
         lines[findheaderinline(lines, "IRTB1 IRTB2", time=1) + ((newnrod_tot - 1) // 12) + 1] = line_aux
 
     # Deletes Card 9.6 and 9.7
 
-    if ngt > 0:
+    if not np.all(ngt == 0):
         start = findheaderinline(lines, "Card 9.6")-1
         n_oldlines = findnextto(lines, "Card 9.6", "********") - start - 1
         removeexcesslines(lines, start, n_oldlines, 0)
