@@ -202,7 +202,7 @@ def main():
     newchn_side = int(nchn_side/dlev)
     newchn_tot = fa_num*newchn
     newnrod_tot = newchn_tot
-
+    nrods_tot = fa_num * nrods
     # gets bundle pitch and converts it into m
 
     bp = np.float64(l_assem[findheaderinline(l_assem, "Bundle pitch") + 1].split()[0])
@@ -306,7 +306,6 @@ def main():
 
 
     fa_types_list = np.zeros(fa_num, dtype=int)
-
     # core map has the core map, with the positions and the indexes
 
     core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
@@ -335,6 +334,8 @@ def main():
             core_map[i][j] = int(linaux[j+1])
             cont_a = cont_a + 1
             numb_core_map[i][j] = int(linaux2[j])
+
+    print(numb_core_map)
 
     # now, for every FA type, generic info about channels (An, Pw, XSIZ, YSIZ) should be created
     # creates an array to store the outer diameters of the rods
@@ -409,6 +410,8 @@ def main():
                 else:
                     rods_for_subchannel[i][j][1][1] = [i, j]
 
+    print(rods_for_subchannel[0][0])
+    print(rods_for_subchannel[0][1])
     # creates a matrix to store the data of the subchannels, so they can be merged afterwards
 
     xsiz = np.zeros(nchn_side, dtype=np.float64)
@@ -583,145 +586,19 @@ def main():
     rod2 = int(0)
     d1 = float(0)
     d2 = float(0)
-    oldgap_type = []  # its final size should old_gaps_in_fa
-    old_gap_connects = np.zeros((old_gaps_in_fa, 2), dtype=int)
-    old_gap_gap = np.zeros(old_gaps_in_fa, dtype=np.float64)
-    new_gap_connect = np.zeros((inner_gaps_in_fa, 2), dtype=int)
-    new_gap_gaps = np.zeros(inner_gaps_in_fa, dtype=np.float64)
-    new_loc_gaps = np.zeros((inner_gaps_in_fa, 2), dtype=np.float64)
-    new_gap_lngts = np.zeros(inner_gaps_in_fa, dtype=np.float64)
-    new_gap_dirs = []
-    tot_gap_connect = np.zeros((newngaps_tot, 2), dtype=int)
-    tot_gap_gaps =  np.zeros(newngaps_tot, dtype=np.float64)
-    tot_loc_gaps = np.zeros((newngaps_tot, 2), dtype=np.float64)
-    tot_gap_lngts = np.zeros(newngaps_tot, dtype=np.float64)
-    tot_gap_dirs = []
-
-    nrep = 2 * newchn_side - 1
-
-
-    aux = int(0)
-    nrep = 2 * newchn_side - 1
-    totgaps_per_row = np.zeros(totrodsrow_n, dtype=int)
-    acum_gaps_per_row = np.zeros(totrodsrow_n, dtype=int)
-    for i in range(0, totrodsrow_n):
-        aux = i // newchn_side + 1
-        if i % newchn_side == newchn_side - 1:
-            totgaps_per_row[i] = (newchn_side - 1) * assemb_in_row[aux - 1]\
-                                 + connect_in_row[aux - 1][1] * newchn_side\
-                                 + connect_in_row[aux - 1][0]
-
-        else:
-            totgaps_per_row[i] = nrep * assemb_in_row[aux - 1]\
-                                 + connect_in_row[aux - 1][0]
-
-    for i in range(0, totrodsrow_n):
-        if i == 0:
-            acum_gaps_per_row[i] = totgaps_per_row[i]
-
-        else:
-            acum_gaps_per_row[i] = acum_gaps_per_row[i - 1] + totgaps_per_row[i]
-
-    auxrow = int(0)
-    nrep_max = 2 * totrodscol_n - 1
-    nrep = 2 * newchn_side - 1
-    nrep1 = newchn_side - 1
-    tot_gaps_guide = np.zeros((totrodsrow_n, nrep_max), dtype=int)
-    aux = int(0)
-    for i in range(0, totrodsrow_n):
-        aux = 0
-        auxrow = (i // newchn_side) + 1
-        if i + 1 <= totrodsrow_n - 1:
-            if (i + 1) % newchn_side != 0:
-                for j in range(0, fa_numcol):
-                    if j != fa_numcol - 1:
-                        if core_map[auxrow - 1][j] != 0:
-                            for k in range(0, nrep):
-                                tot_gaps_guide[i][aux + k] = 1
-                                # if i == 4:
-                                #     print(tot_gaps_guide[i][aux + k])
-                            if core_map[auxrow - 1][j + 1] != 0:
-                                tot_gaps_guide[i][aux + nrep - 1] = -1
-                                tot_gaps_guide[i][aux + nrep] = 1
-                                aux += nrep + 1
-
-                            else:
-                                aux += nrep
-
-                    else:
-                        if core_map[auxrow - 1][j] != 0:
-                            for k in range(0, nrep):
-                                tot_gaps_guide[i][aux + k] = 1
-
-
-            else:
-                for j in range(0, fa_numcol):
-                    if j != fa_numcol - 1:
-                        if core_map[auxrow - 1][j] != 0:
-                            if core_map[auxrow][j] != 0:
-                                for k in range(0, nrep):
-                                    if k == nrep - 1:
-                                        tot_gaps_guide[i][aux + k] = -1
-                                    else:
-                                        if k + 1 % 2 == 1:
-                                            tot_gaps_guide[i][aux + k] = 1
-                                        else:
-                                            tot_gaps_guide[i][aux + k] = -1
-
-                                if core_map[auxrow - 1][j + 1] != 0:
-                                    tot_gaps_guide[i][aux + nrep] = -1
-                                    aux += nrep + 1
-                                else:
-                                    aux += nrep
-
-                            else:
-                                for k in range(0, nrep1):
-                                    tot_gaps_guide[i][aux + k] = 1
-
-                                if core_map[auxrow - 1][j + 1] != 0:
-                                    tot_gaps_guide[i][aux + nrep1] = -1
-                                    aux += nrep1 + 1
-                                else:
-                                    aux += nrep1
-
-                    else:
-                        if core_map[auxrow - 1][j] != 0:
-                            if core_map[auxrow][j] != 0:
-                                for k in range(0, nrep):
-                                    if k == nrep - 1:
-                                        tot_gaps_guide[i][aux + k] = -1
-                                    else:
-                                        if k + 1 % 2 == 1:
-                                            tot_gaps_guide[i][aux + k] = 1
-                                        else:
-                                            tot_gaps_guide[i][aux + k] = -1
-
-                                aux += nrep
-
-                            else:
-                                for k in range(0, nrep1):
-                                    tot_gaps_guide[i][aux + k] = 1
-
-                                aux += nrep1
-
-        else:
-            for j in range(0, fa_numcol):
-                if core_map[auxrow - 1][j] != 0:
-                    if j != fa_numcol - 1:
-                        for k in range(0, nrep1):
-                            tot_gaps_guide[i][aux + k] = 1
-
-                        if core_map[auxrow - 1][j + 1] != 0:
-                            tot_gaps_guide[i][aux + nrep1] = 1
-                            aux += nrep1 + 1
-
-                        else:
-                            aux += nrep1
-
-                    else:
-                        for k in range(0, nrep1):
-                            tot_gaps_guide[i][aux + k] = 1
-
+    # oldgap_type = []  # its final size should old_gaps_in_fa
+    # old_gap_connects = np.zeros((old_gaps_in_fa, 2), dtype=int)
+    # old_gap_gap = np.zeros(old_gaps_in_fa, dtype=np.float64)
+    # new_gap_connect = np.zeros((inner_gaps_in_fa, 2), dtype=int)
+    # new_gap_gaps = np.zeros(inner_gaps_in_fa, dtype=np.float64)
+    # new_loc_gaps = np.zeros((inner_gaps_in_fa, 2), dtype=np.float64)
+    # new_gap_lngts = np.zeros(inner_gaps_in_fa, dtype=np.float64)
+    # new_gap_dirs = []
+    # tot_gap_connect = np.zeros((newngaps_tot, 2), dtype=int)
+    # tot_gap_gaps =  np.zeros(newngaps_tot, dtype=np.float64)
+    # tot_loc_gaps = np.zeros((newngaps_tot, 2), dtype=np.float64)
+    # tot_gap_lngts = np.zeros(newngaps_tot, dtype=np.float64)
+    # tot_gap_dirs = []
 
     nono = int(lines[findheaderinline(lines, "NCHN NONO")+1].split()[2])
     new_msim = nono*newchn_tot
@@ -748,6 +625,104 @@ def main():
         for j in range(0, totrodscol_n):
             newrodsmap[i][j] = int(line_aux[j // newchn_side])
 
+    # gets the radial power map from Card 11.8
+    # gets the number of rods
+
+
+    rad_pow_map = np.zeros((fa_num, nrods_side, nrods_side), dtype=np.float64)
+    new_rad_pow_map = np.zeros((fa_num, newchn_side, newchn_side), dtype=np.float64)
+
+    acum_nrods_inrow = np.zeros(totrodsrow_o, dtype=int)
+    aux1 = int(0)
+    for i in range(0, totrodsrow_o):
+        aux = i // nrods_side
+        for j in range(0, fa_numcol):
+            if core_map[aux][j] != 0:
+                aux1 += nrods_side
+
+        acum_nrods_inrow[i] = aux1
+
+    if nrods_tot % 8 == 0:
+        aux = nrods_tot // 8
+    else:
+        aux = nrods_tot // 8 + 1
+
+    aux1 = int(0)
+    aux2 = int(0)
+    aux3 = int(0)
+    cont = int(0)
+    auxrodrow = int(0)
+    for i in range(0, aux):
+        linaux = lines[findheaderinline(lines, "FQR1  FQR2") + 1 + i].split()
+        if i != aux - 1:
+            for j in range(0, 8):
+                aux1 = i * 8 + j + 1
+
+                if aux1 <= acum_nrods_inrow[0]:
+                        auxrodrow = 0
+                else:
+                    for k in range(1, totrodsrow_o):
+                        if aux1 > acum_nrods_inrow[k - 1] and aux1 <= acum_nrods_inrow[k]:
+                            auxrodrow = k
+                            aux1 -= acum_nrods_inrow[k - 1]
+
+                auxfarow = auxrodrow // nrods_side
+                aux2 = auxrodrow % nrods_side
+                auxfacol = (aux1 - 1) // nrods_side + 1
+                aux1 = (aux1 - 1) % nrods_side
+                for l in range(0, fa_numcol):
+                    if core_map[auxfarow][l] != 0:
+                        cont += 1
+                        if cont == auxfacol:
+                            aux3 = numb_core_map[auxfarow][l]
+
+                rad_pow_map[aux3 - 1][aux2][aux1] = np.float64(linaux[j])
+                cont = 0
+
+        else:
+            if nrods_tot % 8 != 0:
+                aux4 = nrods_tot % 8
+            else:
+                aux4 = 8
+            for j in range(0, aux4):
+                aux1 = i * 8 + j + 1
+                if aux1 <= acum_nrods_inrow[0]:
+                    auxrodrow = 0
+                else:
+                    for k in range(0, totrodsrow_o):
+                        if aux1 > acum_nrods_inrow[k - 1] and aux1 <= acum_nrods_inrow[k]:
+                            auxrodrow = k
+                            aux1 -= acum_nrods_inrow[k - 1]
+
+                auxfarow = auxrodrow // nrods_side
+                aux2 = auxrodrow % nrods_side
+                auxfaincol = (aux1 - 1) // nrods_side + 1
+                aux1 = (aux1 - 1) % nrods_side
+                for l in range(0, fa_numcol):
+                    if core_map[auxfarow][l] != 0:
+                        cont += 1
+                        if cont == auxfaincol:
+                            aux3 = numb_core_map[auxfarow][l]
+
+                rad_pow_map[aux3 - 1][aux2][aux1] = np.float64(linaux[j])
+                cont = 0
+
+    auxsubch = np.zeros(2, dtype=int)
+    auxrod = np.zeros(2, dtype=int)
+    for n in range(0, fa_num):
+        for i in range(0, newchn_side):
+            for j in range(0, newchn_side):
+                for k in range(0, dlev):
+                    for r in range(0, dlev):    #TODO why is it 2!!!!!
+                        auxsubch = [subchannels_in_channel[i][j][k][r][0], subchannels_in_channel[i][j][k][r][1]]
+                        for p in range(0, 2):
+                            for q in range(0, 2):
+                                auxrod[0] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][p][q][0]
+                                if auxrod[0] != -1:
+                                    auxrod[1] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][p][q][1]
+                                    new_rad_pow_map[n][i][j] += 0.25*rad_pow_map[n][auxrod[0]][auxrod[1]]
+
+
     # ------------------------WRITING--------------------------------------------------- #
 
     # Substitutes the number of channels in Group 2
@@ -766,12 +741,12 @@ def main():
     for i in range(0, newchn_tot):
         line_aux = lines[findheaderinline(lines, "I AN PW", time=1) + 1 + i].split()
         line_aux[0] = str(i + 1)
-        line_aux[1] = format_e(card2_an[i])
-        line_aux[2] = format_e(card2_pw[i])
-        line_aux[6] = format_e(card2_X[i])
-        line_aux[7] = format_e(card2_Y[i])
-        line_aux[8] = format_e(card2_XSIZ[i])
-        line_aux[9] = format_e(card2_YSIZ[i])
+        # line_aux[1] = format_e(card2_an[i])
+        # line_aux[2] = format_e(card2_pw[i])
+        # line_aux[6] = format_e(card2_X[i])
+        # line_aux[7] = format_e(card2_Y[i])
+        # line_aux[8] = format_e(card2_XSIZ[i])
+        # line_aux[9] = format_e(card2_YSIZ[i])
         line_aux = '     ' + '   '.join(line_aux) + '\n'
         lines[findheaderinline(lines, "I AN PW", time=1) + 1 + i] = line_aux
 
@@ -975,6 +950,7 @@ def main():
 
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
+    # TODO merge the procedure of obtaining a variable from a document (line_aux etc) in a function
 
 
 main()
