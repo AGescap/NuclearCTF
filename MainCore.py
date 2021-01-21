@@ -748,11 +748,41 @@ def main():
     rmults = np.zeros((newchn_side, newchn_side), dtype=float)
     for i in range(0, newchn_side):
         for j in range(0, newchn_side):
-            if i !=0:
+            if i != 0:
                 if i != newchn_side-1:
                     if j != 0:
                         if j != newchn_side - 1:
                             rmults[i][j] = dlev**2
+
+                        else:
+                            rmults[i][j] = -0.5 * dlev + dlev**2
+
+                    else:
+                        rmults[i][j] = -0.5 * dlev + dlev ** 2
+
+                else:
+                    if j != 0:
+                        if j != newchn_side - 1:
+                            rmults[i][j] = -0.5 * dlev + dlev ** 2
+
+                        else:
+                            rmults[i][j] = 0.25 - dlev + dlev ** 2
+
+                    else:
+                        rmults[i][j] = 0.25 - dlev + dlev ** 2
+
+            else:
+                if j != 0:
+                    if j != newchn_side - 1:
+                        rmults[i][j] = -0.5 * dlev + dlev ** 2
+
+                    else:
+                        rmults[i][j] = 0.25 - dlev + dlev ** 2
+
+                else:
+                    rmults[i][j] = 0.25 - dlev + dlev ** 2
+
+    print(rmults)
 
     # ------------------------WRITING--------------------------------------------------- #
 
