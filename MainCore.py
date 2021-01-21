@@ -720,6 +720,9 @@ def main():
                                     auxrod[1] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][p][q][1]
                                     new_rad_pow_map[n][i][j] += 0.25*rad_pow_map[n][auxrod[0]][auxrod[1]]
 
+    # normalizes the radial profile
+    new_rad_pow_map = np.true_divide(new_rad_pow_map, sum(sum(sum(new_rad_pow_map)))) * float(newchn_tot)
+
     rmults = np.zeros((newchn_side, newchn_side), dtype=float)
     for i in range(0, newchn_side):
         for j in range(0, newchn_side):
@@ -890,8 +893,11 @@ def main():
         line_aux = '     ' + '     '.join(line_aux) + '\n'
         lines[findheaderinline(lines, "IRTB1 IRTB2", time=1) + ((newnrod_tot - 1) // 12) + 1] = line_aux
 
-        # Writes Card 2 and Card 3 data
+    # Writes Card 2 and Card 3 data
 
+    auxnumlines = newnrod_tot // 12 + 1
+    if newnrod_tot % 12 == 0:
+        auxnumlines = newnrod_tot // 12
     contchan = int(0)
     contgap = int(0)
     for i in range(0, totrodsrow_n):
@@ -901,10 +907,9 @@ def main():
             auxfacol = j // newchn_side
             rowinfa = i % newchn_side
             colinfa = j % newchn_side
-            print([i, j])
-            print([auxfarow, auxfacol])
             if core_map[auxfarow][auxfacol] != 0:
                 auxfatype = core_map[auxfarow][auxfacol]
+                auxfanum = numb_core_map[auxfarow][auxfacol]
                 linaux = lines[findheaderinline(lines, "I AN PW") + contchan].split()
                 linaux[0] = str(contchan)
                 linaux[1] = format_e(new_an_pw[auxfatype - 1][rowinfa][colinfa][0])
@@ -920,6 +925,7 @@ def main():
                 linaux[0] = str(contchan)
 
                 linaux[5] = str(rmults[rowinfa][colinfa])
+                linaux[6] = format_e(gapcond[auxfatype - 1])
                 linaux2[0] = line_aux[0]
                 linaux2[1] = '1.000'
                 linaux2[2] = '0'
@@ -941,7 +947,15 @@ def main():
                 linaux2 = '     ' + '   '.join(linaux2) + '\n'
 
                 lines[findheaderinline(lines, " N   IFTY   IAXP") + 3 + 2 * (contchan - 1)] = linaux
-                linaux2 = lines[findheaderinline(lines, " N   IFTY   IAXP") + 2 + 2 * contchan] = linaux2
+                lines[findheaderinline(lines, " N   IFTY   IAXP") + 2 + 2 * contchan] = linaux2
+
+                auxlin = (contchan - 1) // 8
+                auxcol = 0
+
+                auxcol = contchan % 8
+                if rowinfa != newchn_side - 1:
+                    if colinfa != newchn_side - 1:
+                        contgap += 1
 
     # Deletes Card 9.6 and 9.7
 
