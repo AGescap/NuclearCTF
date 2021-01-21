@@ -203,6 +203,7 @@ def main():
     newchn_tot = fa_num*newchn
     newnrod_tot = newchn_tot
     nrods_tot = fa_num * nrods
+    inner_gaps_in_new_fa = 2 * newchn_side * (newchn_side - 1)
     # gets bundle pitch and converts it into m
 
     bp = np.float64(l_assem[findheaderinline(l_assem, "Bundle pitch") + 1].split()[0])
@@ -216,7 +217,6 @@ def main():
     # defines useful magnitudes
 
     free_sp = (bp - (nrods_side - 1) * pp) / 2
-    inner_gaps_in_fa = 2 * newchn_side * (newchn_side - 1)
     totrodsrow_n = fa_numrow * newchn_side
     totrodscol_n = fa_numcol * newchn_side
     totchansrow_n = totrodsrow_n
@@ -336,6 +336,29 @@ def main():
             numb_core_map[i][j] = int(linaux2[j])
 
     print(numb_core_map)
+    fa_connections = int(0)
+    for i in range(0, fa_numrow):
+        for j in range(0, fa_numcol):
+            if core_map[i][j] != 0:
+                if i != fa_numrow - 1:
+                    if j != fa_numcol - 1:
+                        if core_map[i][j+1] != 0:
+                            fa_connections += 1
+                        if core_map[i+1][j] != 0:
+                            fa_connections += 1
+
+                    else:
+                        if core_map[i+1][j] != 0:
+                            fa_connections += 1
+
+                else:
+                    if j != fa_numcol - 1:
+                        if core_map[i][j+1] != 0:
+                            fa_connections += 1
+
+
+    gap_betw_fa_tot = fa_connections * newchn_side
+    newngaps_tot = gap_betw_fa_tot + fa_num * inner_gaps_in_new_fa
 
     # now, for every FA type, generic info about channels (An, Pw, XSIZ, YSIZ) should be created
     # creates an array to store the outer diameters of the rods
@@ -722,6 +745,14 @@ def main():
                                     auxrod[1] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][p][q][1]
                                     new_rad_pow_map[n][i][j] += 0.25*rad_pow_map[n][auxrod[0]][auxrod[1]]
 
+    rmults = np.zeros((newchn_side, newchn_side), dtype=float)
+    for i in range(0, newchn_side):
+        for j in range(0, newchn_side):
+            if i !=0:
+                if i != newchn_side-1:
+                    if j != 0:
+                        if j != newchn_side - 1:
+                            rmults[i][j] = dlev**2
 
     # ------------------------WRITING--------------------------------------------------- #
 
