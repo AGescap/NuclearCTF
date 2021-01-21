@@ -304,7 +304,6 @@ def main():
             else:
                 gt_mat.append("X")
 
-
     fa_types_list = np.zeros(fa_num, dtype=int)
     # core map has the core map, with the positions and the indexes
 
@@ -335,7 +334,8 @@ def main():
             cont_a = cont_a + 1
             numb_core_map[i][j] = int(linaux2[j])
 
-    print(numb_core_map)
+    # gets the number of connections between adjacent core maps
+
     fa_connections = int(0)
     for i in range(0, fa_numrow):
         for j in range(0, fa_numcol):
@@ -355,7 +355,6 @@ def main():
                     if j != fa_numcol - 1:
                         if core_map[i][j+1] != 0:
                             fa_connections += 1
-
 
     gap_betw_fa_tot = fa_connections * newchn_side
     newngaps_tot = gap_betw_fa_tot + fa_num * inner_gaps_in_new_fa
@@ -594,14 +593,12 @@ def main():
                                     rod[l][1] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][l][1][1]
                                     new_gapsX_gap[n][i][j] -= 0.5 * od_rods[n][rod[l][0]][rod[l][1]]
 
-
-
     # gets NK - the number of gaps - from Card 3.1. Calculates the new number of gaps
 
     ngaps_tot = int(lines[findheaderinline(lines, "NK NDM2 NDM3") + 1].split()[0])
 
-    #short_gap = card2_YSIZ[newchn_side - 1]#free_sp + (dlev - 1) * pp card # dimensions for the long and short gap between assemblies
-    #long_gap = card2_YSIZ[2*newchn_side - 1]
+    short_gap = free_sp + (dlev - 1) * pp  # dimensions for the long and short gap between assemblies
+    long_gap = dlev * pp
 
     # Creates gap data. First it creates gap data for a single assembly (in the future, for every type of assembly)
 
@@ -609,19 +606,6 @@ def main():
     rod2 = int(0)
     d1 = float(0)
     d2 = float(0)
-    # oldgap_type = []  # its final size should old_gaps_in_fa
-    # old_gap_connects = np.zeros((old_gaps_in_fa, 2), dtype=int)
-    # old_gap_gap = np.zeros(old_gaps_in_fa, dtype=np.float64)
-    # new_gap_connect = np.zeros((inner_gaps_in_fa, 2), dtype=int)
-    # new_gap_gaps = np.zeros(inner_gaps_in_fa, dtype=np.float64)
-    # new_loc_gaps = np.zeros((inner_gaps_in_fa, 2), dtype=np.float64)
-    # new_gap_lngts = np.zeros(inner_gaps_in_fa, dtype=np.float64)
-    # new_gap_dirs = []
-    # tot_gap_connect = np.zeros((newngaps_tot, 2), dtype=int)
-    # tot_gap_gaps =  np.zeros(newngaps_tot, dtype=np.float64)
-    # tot_loc_gaps = np.zeros((newngaps_tot, 2), dtype=np.float64)
-    # tot_gap_lngts = np.zeros(newngaps_tot, dtype=np.float64)
-    # tot_gap_dirs = []
 
     nono = int(lines[findheaderinline(lines, "NCHN NONO")+1].split()[2])
     new_msim = nono*newchn_tot
@@ -649,8 +633,6 @@ def main():
             newrodsmap[i][j] = int(line_aux[j // newchn_side])
 
     # gets the radial power map from Card 11.8
-    # gets the number of rods
-
 
     rad_pow_map = np.zeros((fa_num, nrods_side, nrods_side), dtype=np.float64)
     new_rad_pow_map = np.zeros((fa_num, newchn_side, newchn_side), dtype=np.float64)
@@ -782,7 +764,9 @@ def main():
                 else:
                     rmults[i][j] = 0.25 - dlev + dlev ** 2
 
-    print(rmults)
+    # gets the old number of channels from Card 2.1
+
+    oldnchn = int(lines[findheaderinline(lines, "NCH NDM2") + 1].split()[0])
 
     # ------------------------WRITING--------------------------------------------------- #
 
@@ -795,21 +779,7 @@ def main():
 
     # Deletes the excess of lines in Card 2.2
 
-    removeexcesslines(lines, findheaderinline(lines, "I AN PW", time=1), nchn, newchn_tot)
-
-    # Edits Card 2.2 lines
-
-    for i in range(0, newchn_tot):
-        line_aux = lines[findheaderinline(lines, "I AN PW", time=1) + 1 + i].split()
-        line_aux[0] = str(i + 1)
-        # line_aux[1] = format_e(card2_an[i])
-        # line_aux[2] = format_e(card2_pw[i])
-        # line_aux[6] = format_e(card2_X[i])
-        # line_aux[7] = format_e(card2_Y[i])
-        # line_aux[8] = format_e(card2_XSIZ[i])
-        # line_aux[9] = format_e(card2_YSIZ[i])
-        line_aux = '     ' + '   '.join(line_aux) + '\n'
-        lines[findheaderinline(lines, "I AN PW", time=1) + 1 + i] = line_aux
+    removeexcesslines(lines, findheaderinline(lines, "I AN PW", time=1), oldnchn, newchn_tot)
 
     # Changes the number of gaps in Card 3.1
 
@@ -825,6 +795,20 @@ def main():
     # Deletes excess of gaps in Card 3.3.5
 
     removeexcesslines(lines, findheaderinline(lines, "K X Y NORM", time=1), ngaps_tot, newngaps_tot)
+
+    # Writes Card 2 and Card 3 data
+
+    contchan = int(0)
+    contgap = int(0)
+    for i in range(0, totrodsrow_n):
+        for j in range(0, totrodscol_n):
+            contchan += 1
+            auxfarow = i % newchn_side
+            auxfacol = j % newchn_side
+            if i != totrodsrow_n - 1:
+                if j != totrodscol_n - 1:
+
+
 
     # Changes NCHN in Card 4.2
 
