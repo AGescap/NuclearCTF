@@ -432,8 +432,6 @@ def main():
                 else:
                     rods_for_subchannel[i][j][1][1] = [i, j]
 
-    print(rods_for_subchannel[0][0])
-    print(rods_for_subchannel[0][1])
     # creates a matrix to store the data of the subchannels, so they can be merged afterwards
 
     xsiz = np.zeros(nchn_side, dtype=np.float64)
@@ -601,11 +599,6 @@ def main():
     long_gap = dlev * pp
 
     # Creates gap data. First it creates gap data for a single assembly (in the future, for every type of assembly)
-
-    rod1 = int(0)
-    rod2 = int(0)
-    d1 = float(0)
-    d2 = float(0)
 
     nono = int(lines[findheaderinline(lines, "NCHN NONO")+1].split()[2])
     new_msim = nono*newchn_tot
@@ -796,19 +789,6 @@ def main():
 
     removeexcesslines(lines, findheaderinline(lines, "K X Y NORM", time=1), ngaps_tot, newngaps_tot)
 
-    # Writes Card 2 and Card 3 data
-
-    contchan = int(0)
-    contgap = int(0)
-    for i in range(0, totrodsrow_n):
-        for j in range(0, totrodscol_n):
-            contchan += 1
-            auxfarow = i % newchn_side
-            auxfacol = j % newchn_side
-            if i != totrodsrow_n - 1:
-                if j != totrodscol_n - 1:
-
-
 
     # Changes NCHN in Card 4.2
 
@@ -909,6 +889,59 @@ def main():
 
         line_aux = '     ' + '     '.join(line_aux) + '\n'
         lines[findheaderinline(lines, "IRTB1 IRTB2", time=1) + ((newnrod_tot - 1) // 12) + 1] = line_aux
+
+        # Writes Card 2 and Card 3 data
+
+    contchan = int(0)
+    contgap = int(0)
+    for i in range(0, totrodsrow_n):
+        for j in range(0, totrodscol_n):
+            contchan += 1
+            auxfarow = i // newchn_side
+            auxfacol = j // newchn_side
+            rowinfa = i % newchn_side
+            colinfa = j % newchn_side
+            print([i, j])
+            print([auxfarow, auxfacol])
+            if core_map[auxfarow][auxfacol] != 0:
+                auxfatype = core_map[auxfarow][auxfacol]
+                linaux = lines[findheaderinline(lines, "I AN PW") + contchan].split()
+                linaux[0] = str(contchan)
+                linaux[1] = format_e(new_an_pw[auxfatype - 1][rowinfa][colinfa][0])
+                linaux[2] = format_e(new_an_pw[auxfatype - 1][rowinfa][colinfa][1])
+                linaux[6] = format_e(new_coords[colinfa] + core_centX[auxfacol])
+                linaux[7] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                linaux = '   ' + '   '.join(linaux) + '\n'
+
+                lines[findheaderinline(lines, "I AN PW") + contchan] = linaux
+
+                linaux = lines[findheaderinline(lines, " N   IFTY   IAXP") + 3 + 2*(contchan - 1)].split()
+                linaux2 = lines[findheaderinline(lines, " N   IFTY   IAXP") + 2 + 2*contchan].split()
+                linaux[0] = str(contchan)
+
+                linaux[5] = str(rmults[rowinfa][colinfa])
+                linaux2[0] = line_aux[0]
+                linaux2[1] = '1.000'
+                linaux2[2] = '0'
+                linaux2[3] = '0.000'
+                linaux2[4] = '0'
+                linaux2[5] = '0.000'
+                linaux2[6] = '0'
+                linaux2[7] = '0.000'
+                linaux2[8] = '0'
+                linaux2[9] = '0.000'
+                linaux2[10] = '0'
+                linaux2[11] = '0.000'
+                linaux2[12] = '0'
+                linaux2[13] = '0.000'
+                linaux2[14] = '0'
+                linaux2[15] = '0.000'
+
+                linaux = '     ' + '   '.join(linaux) + '\n'
+                linaux2 = '     ' + '   '.join(linaux2) + '\n'
+
+                lines[findheaderinline(lines, " N   IFTY   IAXP") + 3 + 2 * (contchan - 1)] = linaux
+                linaux2 = lines[findheaderinline(lines, " N   IFTY   IAXP") + 2 + 2 * contchan] = linaux2
 
     # Deletes Card 9.6 and 9.7
 
