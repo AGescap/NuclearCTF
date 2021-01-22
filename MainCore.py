@@ -190,7 +190,9 @@ def main():
     nrods_side = int(np.sqrt(nrods))
     nchn_side = nrods_side + 1
     nchn = nchn_side**2
+
     dlev = 2
+    indicradprof = 0
 
     if nchn_side % dlev != 0:
         print("ERROR: The original number of channels per side is not divisible by dlev: " + str(dlev) + "\n")
@@ -628,7 +630,6 @@ def main():
 
     rad_pow_map = np.zeros((fa_num, nrods_side, nrods_side), dtype=np.float64)
     new_rad_pow_map = np.zeros((fa_num, newchn_side, newchn_side), dtype=np.float64)
-
     acum_nrods_inrow = np.zeros(totrodsrow_o, dtype=int)
     aux1 = int(0)
     for i in range(0, totrodsrow_o):
@@ -703,6 +704,23 @@ def main():
 
                 rad_pow_map[aux3 - 1][aux2][aux1] = np.float64(linaux[j])
                 cont = 0
+
+    if indicradprof != 0:
+        file_extra_fa = open("ExtraFA.inp", "r")
+        l_extra_fa = file_extra_fa.readlines()
+        file_extra_fa.close()
+        coreradprof = np.zeros(fa_num, dtype=float)
+        for i in range(0, fa_numrow):
+            linaux = l_extra_fa[findheaderinline(l_extra_fa, "Core radial power map") + 1 + i].split()
+            for j in range(0, fa_numcol):
+                if numb_core_map[i][j] != 0:
+                    coreradprof[numb_core_map[i][j] - 1] = float(linaux[j])
+
+        for j in range(0, fa_num):
+            for k in range(0, nrods_side):
+                for l in range(0, nrods_side):
+                    linaux = l_extra_fa[findheaderinline(l_extra_fa, "FAPP Nº", time=1+j) + 1 + k].split()
+                    rad_pow_map[j][k][l] = float(linaux[l]) * coreradprof[j][k][l]
 
     auxsubch = np.zeros(2, dtype=int)
     auxrod = np.zeros(2, dtype=int)
@@ -790,7 +808,6 @@ def main():
     # Deletes excess of gaps in Card 3.3.5
 
     removeexcesslines(lines, findheaderinline(lines, "K X Y NORM", time=1), ngaps_tot, newngaps_tot)
-
 
     # Changes NCHN in Card 4.2
 
@@ -934,6 +951,8 @@ def main():
                 linaux[2] = format_e(new_an_pw[auxfatype - 1][rowinfa][colinfa][1])
                 linaux[6] = format_e(new_coords[colinfa] + core_centX[auxfacol])
                 linaux[7] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                linaux[8] = format_e(new_sizes[colinfa])
+                linaux[9] = format_e(new_sizes[rowinfa])
                 linaux = '   ' + '   '.join(linaux) + '\n'
 
                 lines[findheaderinline(lines, "I AN PW") + contchan] = linaux
@@ -977,6 +996,47 @@ def main():
                 if rowinfa != newchn_side - 1:
                     if colinfa != newchn_side - 1:
                         contgap += 1
+                        linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2*(contgap - 1)].split()
+                        linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2*(contgap - 1)].split()
+                        linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                        linaux[1] = str(contchan)
+                        linaux[2] = str(contchan + 1)
+
+                        linaux2[0] = str(dlev)
+
+                        linaux3[1] = format_e(new_coords[colinfa] + core_centX[auxfacol]) + new_sizes[colinfa] / 2
+                        linaux3[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                        linaux3[3] = 'x'
+
+                        linaux = '   ' + '   '.join(linaux) + '\n'
+                        linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                        linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                        lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                        lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                        lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                        contgap += 1
+                        linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                        linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                        linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                        linaux[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+
+                        linaux2[0] = str(dlev)
+
+                        linaux3[1] = format_e(new_coords[colinfa] + core_centX[auxfacol]) + new_sizes[colinfa] / 2
+                        linaux3[2] = format_e(new_coords[rowinfa] + core_centX[auxfarow]) - new_sizes[rowinfa] / 2
+                        linaux3[3] = 'y'
+
+                        linaux = '   ' + '   '.join(linaux) + '\n'
+                        linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                        linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                        lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                        lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                        lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
 
     # Deletes Card 9.6 and 9.7
 
