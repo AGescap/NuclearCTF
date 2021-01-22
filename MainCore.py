@@ -268,7 +268,6 @@ def main():
         gt_id[0] = gt_id[0] / 1000
         gt_mat.append(l_assem[findheaderinline(l_assem, "Guide tube/water rod material") + 1].split()[0])
 
-        print(gt_od[0])
     else:
         gt_mat.append("X")
 
@@ -721,8 +720,8 @@ def main():
                                     new_rad_pow_map[n][i][j] += 0.25*rad_pow_map[n][auxrod[0]][auxrod[1]]
 
     # normalizes the radial profile
-    new_rad_pow_map = np.true_divide(new_rad_pow_map, sum(sum(sum(new_rad_pow_map)))) * float(newchn_tot)
 
+    new_rad_pow_map = np.true_divide(new_rad_pow_map, sum(sum(sum(new_rad_pow_map)))) * float(newchn_tot)
     rmults = np.zeros((newchn_side, newchn_side), dtype=float)
     for i in range(0, newchn_side):
         for j in range(0, newchn_side):
@@ -893,21 +892,40 @@ def main():
         line_aux = '     ' + '     '.join(line_aux) + '\n'
         lines[findheaderinline(lines, "IRTB1 IRTB2", time=1) + ((newnrod_tot - 1) // 12) + 1] = line_aux
 
+    # Deletes excess lines in Card 8
+
+    auxoldlines = nrods_tot // 8 + 1
+    if auxoldlines % 8 == 0:
+        auxoldlines = nrods_tot // 8
+
+    auxnumlines = newnrod_tot // 8 + 1
+    if newnrod_tot % 8 == 0:
+        auxnumlines = newnrod_tot // 8
+    else:
+        aux = 8 - newnrod_tot % 8
+
+    removeexcesslines(lines, findheaderinline(lines, "FQR1 FQR2", time=1), auxoldlines, auxnumlines)
+    if newnrod_tot % 8 != 0:
+        linaux = lines[findheaderinline(lines, "FQR1 FQR2") + auxnumlines].split()
+        for i in range(0, aux):
+            linaux[-(i + aux)] = " "
+
+        linaux = '   ' + '   '.join(linaux) + '\n'
+        lines[findheaderinline(lines, "FQR1 FQR2") + auxnumlines] = linaux
+
     # Writes Card 2 and Card 3 data
 
-    auxnumlines = newnrod_tot // 12 + 1
-    if newnrod_tot % 12 == 0:
-        auxnumlines = newnrod_tot // 12
+    mem = int(0)
     contchan = int(0)
     contgap = int(0)
     for i in range(0, totrodsrow_n):
         for j in range(0, totrodscol_n):
-            contchan += 1
             auxfarow = i // newchn_side
             auxfacol = j // newchn_side
             rowinfa = i % newchn_side
             colinfa = j % newchn_side
             if core_map[auxfarow][auxfacol] != 0:
+                contchan += 1
                 auxfatype = core_map[auxfarow][auxfacol]
                 auxfanum = numb_core_map[auxfarow][auxfacol]
                 linaux = lines[findheaderinline(lines, "I AN PW") + contchan].split()
@@ -949,10 +967,13 @@ def main():
                 lines[findheaderinline(lines, " N   IFTY   IAXP") + 3 + 2 * (contchan - 1)] = linaux
                 lines[findheaderinline(lines, " N   IFTY   IAXP") + 2 + 2 * contchan] = linaux2
 
-                auxlin = (contchan - 1) // 8
-                auxcol = 0
+                auxlin = (contchan - 1) // 8 + 1
+                auxcol = (contchan - 1) % 8
+                linaux3 = lines[findheaderinline(lines, "FQR1 FQR2") + auxlin].split()
+                linaux3[auxcol] = str(new_rad_pow_map[auxfanum - 1][rowinfa][colinfa])
+                linaux3 = '   ' + '   '.join(linaux3) + '\n'
+                lines[findheaderinline(lines, "FQR1") + auxlin] = linaux3
 
-                auxcol = contchan % 8
                 if rowinfa != newchn_side - 1:
                     if colinfa != newchn_side - 1:
                         contgap += 1
@@ -983,7 +1004,7 @@ def main():
     # Deletes second axial profile (repeated Cards 11.3 and 11.4, that is included when there exist guide tubes.
     # In future versions this could be linked to the number of axial profiles left.
 
-    if ngt > 0:
+    if ngt[0] > 0:
         deletebetweencards(lines, "Card 11.3", "Card 11.7", 2)
 
     # Changes number of boundary conditions in Card 13.1
