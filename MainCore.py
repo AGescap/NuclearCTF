@@ -1008,8 +1008,8 @@ def main():
                 if rowinfa != newchn_side - 1:
                     if colinfa != newchn_side - 1:
                         contgap += 1
-                        linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2*(contgap - 1)].split()
-                        linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2*(contgap - 1)].split()
+                        linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                        linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
                         linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
 
                         linaux[0] = str(contgap)
@@ -1057,57 +1057,86 @@ def main():
                         lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
 
                     else:
-                        if core_map[auxfarow][auxfacol + 1] != 0:
-                            contgap += 1
-                            linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
-                            linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
-                            linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+                        if auxfacol != fa_numcol - 1:
+                             if core_map[auxfarow][auxfacol + 1] != 0:
+                                # 2
+                                contgap += 1
+                                linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
 
-                            linaux[0] = str(contgap)
-                            linaux[1] = str(contchan)
-                            linaux[2] = str(new_chn_guide[i][j + 1])
-                            linaux[3] = format_e(new_sizes[colinfa])
-                            linaux[4] = format_e(new_sizes[0])
+                                linaux[0] = str(contgap)
+                                linaux[1] = str(contchan)
+                                linaux[2] = str(new_chn_guide[i][j + 1])
+                                linaux[3] = format_e(new_sizes[colinfa])
+                                linaux[4] = format_e(new_sizes[0])
 
-                            linaux2[0] = str(dlev)
+                                linaux2[0] = str(dlev)
 
-                            linaux3[1] = format_e(new_coords[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
-                            linaux3[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
-                            linaux3[3] = 'x'
+                                linaux3[1] = format_e(new_coords[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                linaux3[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                                linaux3[3] = 'x'
 
-                            linaux = '   ' + '   '.join(linaux) + '\n'
-                            linaux2 = '   ' + '   '.join(linaux2) + '\n'
-                            linaux3 = '   ' + '   '.join(linaux3) + '\n'
+                                linaux = '   ' + '   '.join(linaux) + '\n'
+                                linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                linaux3 = '   ' + '   '.join(linaux3) + '\n'
 
-                            lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
-                            lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
-                            lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+                                lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
 
-                            contgap += 1
-                            linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
-                            linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
-                            linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+                                contgap += 1
+                                linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
 
-                            linaux[0] = str(contgap)
-                            linaux[1] = str(contchan)
-                            linaux[2] = str(new_chn_guide[i + 1][j])
-                            linaux[3] = format_e(new_gapsY_gap[auxfatype - 1][rowinfa][colinfa])
-                            linaux[4] = format_e(new_coords[rowinfa + 1] - new_coords[rowinfa])
-                            linaux2[0] = str(dlev)
+                                linaux[0] = str(contgap)
+                                linaux[1] = str(contchan)
+                                linaux[2] = str(new_chn_guide[i + 1][j])
+                                linaux[3] = format_e(new_gapsY_gap[auxfatype - 1][rowinfa][colinfa])
+                                linaux[4] = format_e(new_coords[rowinfa + 1] - new_coords[rowinfa])
+                                linaux2[0] = str(dlev)
 
-                            linaux3[1] = format_e(new_coords[colinfa] + core_centY[auxfacol])
-                            linaux3[2] = format_e(new_coords[rowinfa] + core_centX[auxfarow] - new_sizes[rowinfa] / 2)
-                            linaux3[3] = 'y'
+                                linaux3[1] = format_e(new_coords[colinfa] + core_centY[auxfacol])
+                                linaux3[2] = format_e(new_coords[rowinfa] + core_centX[auxfarow] - new_sizes[rowinfa] / 2)
+                                linaux3[3] = 'y'
 
-                            linaux = '   ' + '   '.join(linaux) + '\n'
-                            linaux2 = '   ' + '   '.join(linaux2) + '\n'
-                            linaux3 = '   ' + '   '.join(linaux3) + '\n'
+                                linaux = '   ' + '   '.join(linaux) + '\n'
+                                linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                linaux3 = '   ' + '   '.join(linaux3) + '\n'
 
-                            lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
-                            lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
-                            lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+                                lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                             else:
+                                # 3
+                                contgap += 1
+                                linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                linaux[0] = str(contgap)
+                                linaux[1] = str(contchan)
+                                linaux[2] = str(new_chn_guide[i + 1][j])
+                                linaux[3] = format_e(new_gapsY_gap[auxfatype - 1][rowinfa][colinfa])
+                                linaux[4] = format_e(new_coords[rowinfa + 1] - new_coords[rowinfa])
+                                linaux2[0] = str(dlev)
+
+                                linaux3[1] = format_e(new_coords[colinfa] + core_centY[auxfacol])
+                                linaux3[2] = format_e(new_coords[rowinfa] + core_centX[auxfarow] - new_sizes[rowinfa] / 2)
+                                linaux3[3] = 'y'
+
+                                linaux = '   ' + '   '.join(linaux) + '\n'
+                                linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
 
                         else:
+                            # 4
                             contgap += 1
                             linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
                             linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
@@ -1132,10 +1161,65 @@ def main():
                             lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
                             lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
 
+
                 else:
-                    if i != totrodsrow_n - 1:
-                        if auxfacol != newchn_side - 1:
+                    if colinfa != newchn_side - 1:
+                        if auxfarow != fa_numrow - 1:
                             if core_map[auxfarow + 1][auxfacol] != 0:
+                                # 5
+                                contgap += 1
+                                linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                linaux[0] = str(contgap)
+                                linaux[1] = str(contchan)
+                                linaux[2] = str(new_chn_guide[i][j + 1])
+                                linaux[3] = format_e(new_gapsX_gap[auxfatype - 1][rowinfa][colinfa])
+                                linaux[4] = format_e(new_coords[colinfa + 1] - new_coords[colinfa])
+
+                                linaux2[0] = str(dlev)
+
+                                linaux3[1] = format_e(
+                                    new_coords[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                linaux3[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                                linaux3[3] = 'x'
+
+                                linaux = '   ' + '   '.join(linaux) + '\n'
+                                linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+                                contgap += 1
+                                linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                linaux[0] = str(contgap)
+                                linaux[1] = str(contchan)
+                                linaux[2] = str(new_chn_guide[i + 1][j])
+                                linaux[3] = format_e(new_sizes[colinfa])
+                                linaux[4] = format_e(new_sizes[0])
+
+                                linaux2[0] = str(dlev)
+
+                                linaux3[1] = format_e(new_coords[colinfa] + core_centX[auxfacol])
+                                linaux3[2] = format_e(
+                                    new_coords[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                                linaux3[3] = 'y'
+
+                                linaux = '   ' + '   '.join(linaux) + '\n'
+                                linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                            else:
+                                # 6
                                 contgap += 1
                                 linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
                                 linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
@@ -1162,31 +1246,128 @@ def main():
                                 lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
                                 lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
 
-                                contgap += 1
-                                linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
-                                linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
-                                linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+                        else:
+                            if auxfacol != fa_numcol - 1:
+                                if core_map[i + 1][j] != 0:
+                                    if core_map[i][j + 1] != 0:
+                                        contgap += 1
+                                        linaux = lines[
+                                            findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                        linaux2 = lines[
+                                            findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                        linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
 
-                                linaux[0] = str(contgap)
-                                linaux[1] = str(contchan)
-                                linaux[2] = str(new_chn_guide[i + 1][j])
-                                linaux[3] = format_e(new_sizes[colinfa])
-                                linaux[4] = format_e(new_sizes[0])
+                                        linaux[0] = str(contgap)
+                                        linaux[1] = str(contchan)
+                                        linaux[2] = str(new_chn_guide[i][j + 1])
+                                        linaux[3] = format_e(new_gapsX_gap[auxfatype - 1][rowinfa][colinfa])
+                                        linaux[4] = format_e(new_coords[colinfa + 1] - new_coords[colinfa])
 
-                                linaux2[0] = str(dlev)
+                                        linaux2[0] = str(dlev)
 
-                                linaux3[1] = format_e(new_coords[colinfa] + core_centY[auxfacol])
-                                linaux3[2] = format_e(
-                                    new_coords[rowinfa] + core_centX[auxfarow] - new_sizes[rowinfa] / 2)
-                                linaux3[3] = 'y'
+                                        linaux3[1] = format_e(
+                                            new_coords[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                        linaux3[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                                        linaux3[3] = 'x'
 
-                                linaux = '   ' + '   '.join(linaux) + '\n'
-                                linaux2 = '   ' + '   '.join(linaux2) + '\n'
-                                linaux3 = '   ' + '   '.join(linaux3) + '\n'
+                                        linaux = '   ' + '   '.join(linaux) + '\n'
+                                        linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                        linaux3 = '   ' + '   '.join(linaux3) + '\n'
 
-                                lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
-                                lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
-                                lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+                                        lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                        lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                        lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                                        contgap += 1
+                                        linaux = lines[
+                                            findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                        linaux2 = lines[
+                                            findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                        linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                        linaux[0] = str(contgap)
+                                        linaux[1] = str(contchan)
+                                        linaux[2] = str(new_chn_guide[i + 1][j])
+                                        linaux[3] = format_e(new_sizes[colinfa])
+                                        linaux[4] = format_e(new_sizes[0])
+
+                                        linaux2[0] = str(dlev)
+
+                                        linaux3[1] = format_e(new_coords[colinfa] + core_centX[auxfacol])
+                                        linaux3[2] = format_e(
+                                            new_coords[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                                        linaux3[3] = 'y'
+
+                                        linaux = '   ' + '   '.join(linaux) + '\n'
+                                        linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                        linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                        lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                        lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                        lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                                    else:
+                                        contgap += 1
+                                        linaux = lines[
+                                            findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                        linaux2 = lines[
+                                            findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                        linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                        linaux[0] = str(contgap)
+                                        linaux[1] = str(contchan)
+                                        linaux[2] = str(new_chn_guide[i + 1][j])
+                                        linaux[3] = format_e(new_sizes[colinfa])
+                                        linaux[4] = format_e(new_sizes[0])
+
+                                        linaux2[0] = str(dlev)
+
+                                        linaux3[1] = format_e(new_coords[colinfa] + core_centX[auxfacol])
+                                        linaux3[2] = format_e(
+                                            new_coords[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                                        linaux3[3] = 'y'
+
+                                        linaux = '   ' + '   '.join(linaux) + '\n'
+                                        linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                        linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                        lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                        lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                        lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                                else:
+                                    if core_map[i][j + 1] !=0:
+                                        contgap += 1
+                                        linaux = lines[
+                                            findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                        linaux2 = lines[
+                                            findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                        linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                        linaux[0] = str(contgap)
+                                        linaux[1] = str(contchan)
+                                        linaux[2] = str(new_chn_guide[i][j + 1])
+                                        linaux[3] = format_e(new_gapsX_gap[auxfatype - 1][rowinfa][colinfa])
+                                        linaux[4] = format_e(new_coords[colinfa + 1] - new_coords[colinfa])
+
+                                        linaux2[0] = str(dlev)
+
+                                        linaux3[1] = format_e(
+                                            new_coords[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                        linaux3[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                                        linaux3[3] = 'x'
+
+                                        linaux = '   ' + '   '.join(linaux) + '\n'
+                                        linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                        linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                        lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                        lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                        lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+
+
+
 
     # Deletes Card 9.6 and 9.7
 
