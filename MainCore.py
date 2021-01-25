@@ -517,7 +517,6 @@ def main():
     for i in range(1, newchn_side - 1):
         new_sizes[i] = dlev * pp
 
-    print(new_sizes)
     for n in range(0, fa_types):
         pw = np.zeros((nchn_side, nchn_side), dtype=np.float64)
         an = an_0
@@ -909,6 +908,10 @@ def main():
     line_aux = '     ' + '    '.join(line_aux) + '\n'
     lines[findheaderinline(lines, "NRRD NSRD", time=1) + 1] = line_aux
 
+    # Removes excess of lines in Card 8.3
+
+    removeexcesslines(lines, findheaderinline(lines, "NSCH PIE"), 2 * nrods_tot, 2 * newnrod_tot)
+
     # Changes NRT1 in Card 8.6
 
     line_aux = lines[findheaderinline(lines, "NRT1 NST1", time=1) + 1].split()
@@ -951,7 +954,6 @@ def main():
 
     # Writes Card 2 and Card 3 data
 
-    mem = int(0)
     contchan = int(0)
     contgap = int(0)
     for i in range(0, totrodsrow_n):
@@ -1469,8 +1471,6 @@ def main():
                                     lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
                                     lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
                                     lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
-
-
 
     # TODO the process of making the gaps may be simplified with a switch - case structure
 
