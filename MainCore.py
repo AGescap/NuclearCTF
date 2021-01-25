@@ -122,8 +122,11 @@ def refchannel(numchannel, dlevel, n_sbchn_side):
 
 
 def format_e(n):    # This function allows to write a float as a string with scientific notation
-    a = '%E' % n
-    return a.split('E')[0].rstrip('0').rstrip('.') + 'E' + a.split('E')[1]
+    if abs(n) < 1e-5:
+        return '0.00000E+00'
+    else:
+        a = '%E' % n
+        return a.split('E')[0].rstrip('0').rstrip('.') + 'E' + a.split('E')[1]
 
 
 def ret_FA(numcols, numfa):
