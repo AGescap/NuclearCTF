@@ -194,7 +194,7 @@ def main():
     nchn_side = nrods_side + 1
     nchn = nchn_side**2
 
-    dlev = 2
+    dlev = 6
     indicradprof = 0
 
     if nchn_side % dlev != 0:
@@ -208,10 +208,12 @@ def main():
     newchn_tot = fa_num*newchn
     newnrod_tot = newchn_tot
     nrods_tot = fa_num * nrods
+
     inner_gaps_in_new_fa = 2 * newchn_side * (newchn_side - 1)
+
     # gets bundle pitch and converts it into m
 
-    bp = np.float64(l_assem[findheaderinline(l_assem, "Bundle pitch") + 1].split()[0])
+    bp = float(l_assem[findheaderinline(l_assem, "Bundle pitch") + 1].split()[0])
     bp = bp / 1000
 
     # gets pin pitch and converts it into mm
@@ -231,23 +233,19 @@ def main():
     linaux = lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL") + 1].split()
     totchansrow_o = int(linaux[0])
 
-    # gets position of guide tubes if there are any. with the origin in top left corner of the FA,
-    # the "0th" position marks the row and "1st" position, the column
-
-    fr_id = np.zeros(fa_types, dtype=np.float64)
+    fr_id = np.zeros(fa_types, dtype=float)
     fr_id[0] = float(l_assem[findheaderinline(l_assem, "Cladding inner diameter") + 1].split()[0])
     fr_id[0] = fr_id / 1000
-    fr_od = np.zeros(fa_types, dtype=np.float64)
+    fr_od = np.zeros(fa_types, dtype=float)
     fr_od[0] = float(l_assem[findheaderinline(l_assem, "Cladding outer diameter") + 1].split()[0])
     fr_od[0] = fr_od / 1000
-
     fr_clad_mat = []
     fr_clad_mat.append(l_assem[findheaderinline(l_assem, "Cladding material") + 1].split()[0])
     gt_mat = []
 
     gapcond = np.zeros(fa_types, dtype=float)
     gapcond[0] = float(l_assem[findheaderinline(l_assem, "Constant gap conductance")+1].split()[0])
-    gtpos = np.zeros((fa_types, nrods, 2), dtype=int)
+    gtpos = np.zeros((fa_types, nrods, 2), dtype=int)  # TODO Apparently it has no use
     ftds = np.zeros(fa_types, dtype=float)
     gt_id = np.zeros(fa_types, dtype=float)
     gt_od = np.zeros(fa_types, dtype=float)
@@ -274,7 +272,7 @@ def main():
         gt_mat.append(l_assem[findheaderinline(l_assem, "Guide tube/water rod material") + 1].split()[0])
 
     else:
-        gt_mat.append("X")
+        gt_mat.append("X")  # TODO should give it a thought
 
     if fa_types > 1:
         file_extra_fa = open("ExtraFA.inp", "r")
@@ -309,6 +307,7 @@ def main():
                 gt_mat.append("X")
 
     fa_types_list = np.zeros(fa_num, dtype=int)
+
     # core map has the core map, with the positions and the indexes
 
     core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
@@ -321,6 +320,8 @@ def main():
 
     for i in range(0, fa_numrow):
         core_centY[i] = ((i + 1) - 0.5 - float(fa_numcol) / 2) * bp
+
+    # TODO try with non-square core arrays
 
     # edit fa_transl, edit core_map
 
@@ -461,6 +462,8 @@ def main():
         new_xsiz[i] = dlev * pp
         new_ysiz[i] = dlev * pp
 
+    # TODO ysiz and new_ysiz will be redundant as long as the FAs are squared arrays
+
     an = np.zeros((nchn_side, nchn_side), dtype=np.float64)
     an_0 = np.zeros((nchn_side, nchn_side), dtype=np.float64)
     gapsX_gap = np.zeros((fa_types, nchn_side, nchn_side - 1), dtype=np.float64)
@@ -506,7 +509,7 @@ def main():
 
     new_an_pw = np.zeros((fa_types, newchn_side, newchn_side, 2), dtype=np.float64)
     new_sizes = np.zeros(newchn_side, dtype=np.float64)
-    new_sizes[1] = free_sp + (dlev - 1) * pp
+    new_sizes[0] = free_sp + (dlev - 1) * pp
     new_sizes[-1] = free_sp + (dlev - 1) * pp
     new_gapsX_gap = np.zeros((fa_types, newchn_side, newchn_side - 1), dtype=np.float64)
     new_gapsY_gap = np.zeros((fa_types, newchn_side - 1, newchn_side), dtype=np.float64)
@@ -514,6 +517,7 @@ def main():
     for i in range(1, newchn_side - 1):
         new_sizes[i] = dlev * pp
 
+    print(new_sizes)
     for n in range(0, fa_types):
         pw = np.zeros((nchn_side, nchn_side), dtype=np.float64)
         an = an_0
