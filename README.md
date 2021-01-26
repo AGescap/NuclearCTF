@@ -11,7 +11,7 @@ The purpose here is more general: to homogenize a CTF core input, also made with
  * bp = bundle pitch, gets converted into m. Scalar <br/>
  * core_centX = list of the X coordinates of the centers of the FAs depending on the column -of the core- in which they are located. 1-D array (fa_numcol)  <br/>
  * core_centY = list of the Y coordinates of the centers of the FAs depending on the row -of the core- in which they are located. 1-D array (fa_numcol)  <br/>
- * core_map = 2-D array. [i][j] where [i] = row, [j] = col is the type of fuel assembly, and zero if it is a "water" FA. Different from core_map . 2-D array <br/>
+ * core_map = 2-D array. [i][j] where [i] = row, [j] = col is the type of fuel assembly, and zero if it is a "water" FA. Different from core_map . 2-D array (fa_numrow, fa_numcol) <br/>
  * dlev = level of discretization. nchn_side must be a multiple of it. Scalar <br/>
  * fa_num = number of fuel assemblies, without counting the ones filled with water. Scalar <br/>
  * fa_numcol = number of columns in the FA array in the core. Scalar <br/>
