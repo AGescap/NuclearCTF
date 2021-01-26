@@ -376,6 +376,7 @@ def main():
 
     od_rods = np.ones((fa_types, nrods_side, nrods_side), dtype=float)
 
+
     for i in range(0, fa_types):
         od_s[i][0] = fr_od[i]
         if ngt[i] > 0:
