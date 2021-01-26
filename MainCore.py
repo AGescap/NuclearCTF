@@ -321,6 +321,7 @@ def main():
     for i in range(0, fa_numrow):
         core_centY[i] = ((i + 1) - 0.5 - float(fa_numcol) / 2) * bp
 
+    core_centY = -1 * core_centY
     # TODO try with non-square core arrays
 
     # edit fa_transl, edit core_map
@@ -477,12 +478,14 @@ def main():
 
     # gives values to the subchannel data
 
-    new_coords = np.zeros(newchn_side, dtype=np.float64)
-    new_coords[0] = -bp / 2 + (free_sp + (dlev - 1) * pp) / 2
-    new_coords[-1] = bp / 2 - (free_sp + (dlev - 1) * pp) / 2
+    new_coordsX = np.zeros(newchn_side, dtype=np.float64)
+    new_coordsX[0] = -bp / 2 + (free_sp + (dlev - 1) * pp) / 2
+    new_coordsX[-1] = bp / 2 - (free_sp + (dlev - 1) * pp) / 2
 
     for i in range(1, newchn_side - 1):
-        new_coords[i] = -bp / 2 + free_sp + (dlev - 1) * pp + dlev * pp / 2 + (i - 1) * dlev * pp
+        new_coordsX[i] = -bp / 2 + free_sp + (dlev - 1) * pp + dlev * pp / 2 + (i - 1) * dlev * pp
+
+    new_coordsY = -1 * new_coordsX
 
     # edits nominal area and wet perimeter for the channels
 
@@ -601,11 +604,6 @@ def main():
     # gets NK - the number of gaps - from Card 3.1. Calculates the new number of gaps
 
     ngaps_tot = int(lines[findheaderinline(lines, "NK NDM2 NDM3") + 1].split()[0])
-
-    short_gap = free_sp + (dlev - 1) * pp  # dimensions for the long and short gap between assemblies
-    long_gap = dlev * pp
-
-    # Creates gap data. First it creates gap data for a single assembly (in the future, for every type of assembly)
 
     nono = int(lines[findheaderinline(lines, "NCHN NONO")+1].split()[2])
     new_msim = nono*newchn_tot
@@ -970,16 +968,16 @@ def main():
                 linaux[0] = str(contchan)
                 linaux[1] = format_e(new_an_pw[auxfatype - 1][rowinfa][colinfa][0])
                 linaux[2] = format_e(new_an_pw[auxfatype - 1][rowinfa][colinfa][1])
-                linaux[6] = format_e(new_coords[colinfa] + core_centX[auxfacol])
-                linaux[7] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                linaux[6] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
+                linaux[7] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
                 linaux[8] = format_e(new_sizes[colinfa])
                 linaux[9] = format_e(new_sizes[rowinfa])
                 linaux = '   ' + '   '.join(linaux) + '\n'
 
                 lines[findheaderinline(lines, "I AN PW") + contchan] = linaux
 
-                linaux = lines[findheaderinline(lines, " N   IFTY   IAXP") + 3 + 2*(contchan - 1)].split()
-                linaux2 = lines[findheaderinline(lines, " N   IFTY   IAXP") + 2 + 2*contchan].split()
+                linaux = lines[findheaderinline(lines, " N   IFTY   IAXP") + 3 + 2 * (contchan - 1)].split()
+                linaux2 = lines[findheaderinline(lines, " N   IFTY   IAXP") + 2 + 2 * contchan].split()
                 linaux[0] = str(contchan)
 
                 linaux[5] = str(rmults[rowinfa][colinfa])
@@ -1025,12 +1023,12 @@ def main():
                         linaux[1] = str(contchan)
                         linaux[2] = str(new_chn_guide[i][j + 1])
                         linaux[3] = format_e(new_gapsX_gap[auxfatype - 1][rowinfa][colinfa])
-                        linaux[4] = format_e(new_coords[colinfa + 1] - new_coords[colinfa])
+                        linaux[4] = format_e(new_coordsX[colinfa + 1] - new_coordsX[colinfa])
 
                         linaux2[0] = str(dlev)
 
-                        linaux3[1] = format_e(new_coords[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
-                        linaux3[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                        linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                        linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
                         linaux3[3] = 'x'
 
                         linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1050,11 +1048,11 @@ def main():
                         linaux[1] = str(contchan)
                         linaux[2] = str(new_chn_guide[i + 1][j])
                         linaux[3] = format_e(new_gapsY_gap[auxfatype - 1][rowinfa][colinfa])
-                        linaux[4] = format_e(new_coords[rowinfa + 1] - new_coords[rowinfa])
+                        linaux[4] = format_e(new_coordsY[rowinfa] - new_coordsY[rowinfa + 1])
                         linaux2[0] = str(dlev)
 
-                        linaux3[1] = format_e(new_coords[colinfa] + core_centY[auxfacol])
-                        linaux3[2] = format_e(new_coords[rowinfa] + core_centX[auxfarow] - new_sizes[rowinfa] / 2)
+                        linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
+                        linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
                         linaux3[3] = 'y'
 
                         linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1067,7 +1065,7 @@ def main():
 
                     else:
                         if auxfacol != fa_numcol - 1:
-                             if core_map[auxfarow][auxfacol + 1] != 0:
+                            if core_map[auxfarow][auxfacol + 1] != 0:
                                 # 2
                                 contgap += 1
                                 linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
@@ -1082,8 +1080,8 @@ def main():
 
                                 linaux2[0] = str(dlev)
 
-                                linaux3[1] = format_e(new_coords[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
-                                linaux3[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                                linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
                                 linaux3[3] = 'x'
 
                                 linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1103,11 +1101,11 @@ def main():
                                 linaux[1] = str(contchan)
                                 linaux[2] = str(new_chn_guide[i + 1][j])
                                 linaux[3] = format_e(new_gapsY_gap[auxfatype - 1][rowinfa][colinfa])
-                                linaux[4] = format_e(new_coords[rowinfa + 1] - new_coords[rowinfa])
+                                linaux[4] = format_e(new_coordsY[rowinfa] - new_coordsY[rowinfa + 1])
                                 linaux2[0] = str(dlev)
 
-                                linaux3[1] = format_e(new_coords[colinfa] + core_centY[auxfacol])
-                                linaux3[2] = format_e(new_coords[rowinfa] + core_centX[auxfarow] - new_sizes[rowinfa] / 2)
+                                linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
+                                linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
                                 linaux3[3] = 'y'
 
                                 linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1118,7 +1116,7 @@ def main():
                                 lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
                                 lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
 
-                             else:
+                            else:
                                 # 3
                                 contgap += 1
                                 linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
@@ -1129,11 +1127,11 @@ def main():
                                 linaux[1] = str(contchan)
                                 linaux[2] = str(new_chn_guide[i + 1][j])
                                 linaux[3] = format_e(new_gapsY_gap[auxfatype - 1][rowinfa][colinfa])
-                                linaux[4] = format_e(new_coords[rowinfa + 1] - new_coords[rowinfa])
+                                linaux[4] = format_e(new_coordsY[rowinfa] - new_coordsY[rowinfa + 1])
                                 linaux2[0] = str(dlev)
 
-                                linaux3[1] = format_e(new_coords[colinfa] + core_centY[auxfacol])
-                                linaux3[2] = format_e(new_coords[rowinfa] + core_centX[auxfarow] - new_sizes[rowinfa] / 2)
+                                linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
+                                linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
                                 linaux3[3] = 'y'
 
                                 linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1155,11 +1153,11 @@ def main():
                             linaux[1] = str(contchan)
                             linaux[2] = str(new_chn_guide[i + 1][j])
                             linaux[3] = format_e(new_gapsY_gap[auxfatype - 1][rowinfa][colinfa])
-                            linaux[4] = format_e(new_coords[rowinfa + 1] - new_coords[rowinfa])
+                            linaux[4] = format_e(new_coordsY[rowinfa] - new_coordsY[rowinfa + 1])
                             linaux2[0] = str(dlev)
 
-                            linaux3[1] = format_e(new_coords[colinfa] + core_centY[auxfacol])
-                            linaux3[2] = format_e(new_coords[rowinfa] + core_centX[auxfarow] - new_sizes[rowinfa] / 2)
+                            linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
+                            linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
                             linaux3[3] = 'y'
 
                             linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1185,13 +1183,13 @@ def main():
                                 linaux[1] = str(contchan)
                                 linaux[2] = str(new_chn_guide[i][j + 1])
                                 linaux[3] = format_e(new_gapsX_gap[auxfatype - 1][rowinfa][colinfa])
-                                linaux[4] = format_e(new_coords[colinfa + 1] - new_coords[colinfa])
+                                linaux[4] = format_e(new_coordsX[colinfa + 1] - new_coordsX[colinfa])
 
                                 linaux2[0] = str(dlev)
 
                                 linaux3[1] = format_e(
-                                    new_coords[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
-                                linaux3[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                                    new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
                                 linaux3[3] = 'x'
 
                                 linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1215,9 +1213,9 @@ def main():
 
                                 linaux2[0] = str(dlev)
 
-                                linaux3[1] = format_e(new_coords[colinfa] + core_centX[auxfacol])
+                                linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
                                 linaux3[2] = format_e(
-                                    new_coords[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                                    new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
                                 linaux3[3] = 'y'
 
                                 linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1239,13 +1237,13 @@ def main():
                                 linaux[1] = str(contchan)
                                 linaux[2] = str(new_chn_guide[i][j + 1])
                                 linaux[3] = format_e(new_gapsX_gap[auxfatype - 1][rowinfa][colinfa])
-                                linaux[4] = format_e(new_coords[colinfa + 1] - new_coords[colinfa])
+                                linaux[4] = format_e(new_coordsX[colinfa + 1] - new_coordsX[colinfa])
 
                                 linaux2[0] = str(dlev)
 
                                 linaux3[1] = format_e(
-                                    new_coords[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
-                                linaux3[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                                    new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
                                 linaux3[3] = 'x'
 
                                 linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1267,13 +1265,13 @@ def main():
                             linaux[1] = str(contchan)
                             linaux[2] = str(new_chn_guide[i][j + 1])
                             linaux[3] = format_e(new_gapsX_gap[auxfatype - 1][rowinfa][colinfa])
-                            linaux[4] = format_e(new_coords[colinfa + 1] - new_coords[colinfa])
+                            linaux[4] = format_e(new_coordsX[colinfa + 1] - new_coordsX[colinfa])
 
                             linaux2[0] = str(dlev)
 
                             linaux3[1] = format_e(
-                                new_coords[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
-                            linaux3[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                                new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                            linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
                             linaux3[3] = 'x'
 
                             linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1306,8 +1304,8 @@ def main():
                                         linaux2[0] = str(dlev)
 
                                         linaux3[1] = format_e(
-                                            new_coords[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
-                                        linaux3[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                                            new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                        linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
                                         linaux3[3] = 'x'
 
                                         linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1334,9 +1332,9 @@ def main():
 
                                         linaux2[0] = str(dlev)
 
-                                        linaux3[1] = format_e(new_coords[colinfa] + core_centX[auxfacol])
+                                        linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
                                         linaux3[2] = format_e(
-                                            new_coords[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                                            new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
                                         linaux3[3] = 'y'
 
                                         linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1365,8 +1363,8 @@ def main():
                                         linaux2[0] = str(dlev)
 
                                         linaux3[1] = format_e(
-                                            new_coords[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
-                                        linaux3[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                                            new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                        linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
                                         linaux3[3] = 'x'
 
                                         linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1396,9 +1394,9 @@ def main():
 
                                         linaux2[0] = str(dlev)
 
-                                        linaux3[1] = format_e(new_coords[colinfa] + core_centX[auxfacol])
+                                        linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
                                         linaux3[2] = format_e(
-                                            new_coords[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                                            new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
                                         linaux3[3] = 'y'
 
                                         linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1428,9 +1426,9 @@ def main():
 
                                     linaux2[0] = str(dlev)
 
-                                    linaux3[1] = format_e(new_coords[colinfa] + core_centX[auxfacol])
+                                    linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
                                     linaux3[2] = format_e(
-                                        new_coords[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                                        new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
                                     linaux3[3] = 'y'
 
                                     linaux = '   ' + '   '.join(linaux) + '\n'
@@ -1460,8 +1458,8 @@ def main():
                                     linaux2[0] = str(dlev)
 
                                     linaux3[1] = format_e(
-                                        new_coords[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
-                                    linaux3[2] = format_e(new_coords[rowinfa] + core_centY[auxfarow])
+                                        new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                    linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
                                     linaux3[3] = 'x'
 
                                     linaux = '   ' + '   '.join(linaux) + '\n'
