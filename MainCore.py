@@ -122,8 +122,11 @@ def refchannel(numchannel, dlevel, n_sbchn_side):
 
 
 def format_e(n):    # This function allows to write a float as a string with scientific notation
-    a = '%E' % n
-    return a.split('E')[0].rstrip('0').rstrip('.') + 'E' + a.split('E')[1]
+    if abs(n) < 1e-5:
+        return '0.00000E+00'
+    else:
+        a = '%E' % n
+        return a.split('E')[0].rstrip('0').rstrip('.') + 'E' + a.split('E')[1]
 
 
 def ret_FA(numcols, numfa):
@@ -172,11 +175,13 @@ def main():
 
     # gets rods number in the assembly
 
-    nfrods = int(l_assem[findheaderinline(l_assem, "Number of fuel rods")+1].split()[0])
+    nfrods = np.zeros(fa_types, dtype=int)
+    nfrods[0] = int(l_assem[findheaderinline(l_assem, "Number of fuel rods")+1].split()[0])
 
     # gets number of guidetubes
 
-    ngt = int(l_assem[findheaderinline(l_assem, "Number of guide tubes/water rods") + 1].split()[0])
+    ngt = np.zeros(fa_types, dtype=int)
+    ngt[0] = int(l_assem[findheaderinline(l_assem, "Number of guide tubes/water rods") + 1].split()[0])
 
     # gets the old number of channels in the deck.inp
 
@@ -184,11 +189,13 @@ def main():
 
     # total number of rods, rods per side, channels per side, discretization level
 
-    nrods = nfrods + ngt
+    nrods = nfrods[0] + ngt[0]          # so far, this figure will remain constant through the different FA's
     nrods_side = int(np.sqrt(nrods))
     nchn_side = nrods_side + 1
     nchn = nchn_side**2
-    dlev = 2
+
+    dlev = 6
+    indicradprof = 0
 
     if nchn_side % dlev != 0:
         print("ERROR: The original number of channels per side is not divisible by dlev: " + str(dlev) + "\n")
@@ -200,10 +207,13 @@ def main():
     newchn_side = int(nchn_side/dlev)
     newchn_tot = fa_num*newchn
     newnrod_tot = newchn_tot
+    nrods_tot = fa_num * nrods
+
+    inner_gaps_in_new_fa = 2 * newchn_side * (newchn_side - 1)
 
     # gets bundle pitch and converts it into m
 
-    bp = np.float64(l_assem[findheaderinline(l_assem, "Bundle pitch") + 1].split()[0])
+    bp = float(l_assem[findheaderinline(l_assem, "Bundle pitch") + 1].split()[0])
     bp = bp / 1000
 
     # gets pin pitch and converts it into mm
@@ -211,231 +221,280 @@ def main():
     pp = float(l_assem[findheaderinline(l_assem, "Pin pitch") + 1].split()[0])
     pp = pp / 1000
 
-    # gets position of guide tubes if there are any. with the origin in top left corner of the FA,
-    # the "0th" position marks the row and "1st" position, the column
+    # defines useful magnitudes
 
-    fr_od = float(l_assem[findheaderinline(l_assem, "Cladding outer diameter") + 1].split()[0])
-    fr_od = fr_od/1000
+    free_sp = (bp - (nrods_side - 1) * pp) / 2
+    totrodsrow_n = fa_numrow * newchn_side
+    totrodscol_n = fa_numcol * newchn_side
+    totchansrow_n = totrodsrow_n
+    totchanscol_n = totrodscol_n
+    linaux = lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL") + 1].split()
+    totrodsrow_o = int(linaux[0])
+    linaux = lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL") + 1].split()
+    totchansrow_o = int(linaux[0])
 
-    gtpos = np.zeros((ngt, 2), dtype=int)
-    rodtype = np.zeros(nrods, dtype=int)
-    auxvar = []
+    fr_id = np.zeros(fa_types, dtype=float)
+    fr_id[0] = float(l_assem[findheaderinline(l_assem, "Cladding inner diameter") + 1].split()[0])
+    fr_id[0] = fr_id / 1000
+    fr_od = np.zeros(fa_types, dtype=float)
+    fr_od[0] = float(l_assem[findheaderinline(l_assem, "Cladding outer diameter") + 1].split()[0])
+    fr_od[0] = fr_od / 1000
+    fr_clad_mat = []
+    fr_clad_mat.append(l_assem[findheaderinline(l_assem, "Cladding material") + 1].split()[0])
+    gt_mat = []
 
-    if ngt > 0:
+    gapcond = np.zeros(fa_types, dtype=float)
+    gapcond[0] = float(l_assem[findheaderinline(l_assem, "Constant gap conductance")+1].split()[0])
+    gtpos = np.zeros((fa_types, nrods, 2), dtype=int)  # TODO Apparently it has no use
+    ftds = np.zeros(fa_types, dtype=float)
+    gt_id = np.zeros(fa_types, dtype=float)
+    gt_od = np.zeros(fa_types, dtype=float)
 
-        for i in range(ngt):
+    rodtype = np.zeros((fa_types, nrods_side, nrods_side), dtype=int)
+    fp_diam = np.zeros(fa_types, dtype=float)
+
+    fp_diam[0] = float(l_assem[findheaderinline(l_assem, "Fuel pellet diameter") + 1].split()[0])  # diam of fuel pellet
+    fp_diam[0] = fp_diam[0] / 1000
+    ftds[0] = float(l_assem[findheaderinline(l_assem, "Theoretical density of the fuel pellet") + 1].split()[0])
+
+    if ngt[0] > 0:
+
+        for i in range(ngt[0]):
             linaux = l_assem[findheaderinline(l_assem, "Use X Y format") + 1+i].split()
-            gtpos[i][0] = int(linaux[0])
-            gtpos[i][1] = int(linaux[1])
-            auxvar = nrods_side*(gtpos[i][0]-1) + gtpos[i][1] - 1
-            rodtype[auxvar] = 1
+            gtpos[0][i][0] = int(linaux[0])
+            gtpos[0][i][1] = int(linaux[1])
+            rodtype[0][int(linaux[0]) - 1][int(linaux[1]) - 1] = 1
 
-        gt_od = float(l_assem[findheaderinline(l_assem, "Outer diameter of guide tube/water rod") + 1].split()[0])
-        gt_od = gt_od/1000
+        gt_od[0] = float(l_assem[findheaderinline(l_assem, "Outer diameter of guide tube/water rod") + 1].split()[0])
+        gt_od[0] = gt_od[0]/1000
+        gt_id[0] = float(l_assem[findheaderinline(l_assem, "Inner diameter of guide tube/water rod") + 1].split()[0])
+        gt_id[0] = gt_id[0] / 1000
+        gt_mat.append(l_assem[findheaderinline(l_assem, "Guide tube/water rod material") + 1].split()[0])
 
-    # stores the fuel assembly map
+    else:
+        gt_mat.append("X")  # TODO should give it a thought
 
-    core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
-    for i in range(fa_numrow):
-        linaux = (l_geo[findheaderinline(l_geo, "FUEL ASSEMBLY MAP") + 2+i].split())
-        for j in range(fa_numcol):
-            core_map[i][j] = int(linaux[j+1])
+    if fa_types > 1:
+        file_extra_fa = open("ExtraFA.inp", "r")
+        l_extra_fa = file_extra_fa.readlines()
+        file_extra_fa.close()
+        for i in range(0, fa_types - 1):
+            ngt[i + 1] = int(l_extra_fa[findheaderinline(l_extra_fa, "Number of guide tubes/water rods",
+                                                         time=i+1) + 1].split()[0])
+            ftds[i + 1] = float(l_extra_fa[findheaderinline(l_extra_fa, "Theoretical density of the fuel pellet",
+                                                            time=i+1) + 1].split()[0])
+            gapcond[i + 1] = float(l_extra_fa[findheaderinline(l_extra_fa, "Constant gap conductance",
+                                                            time=i+1) + 1].split()[0])
+            fr_clad_mat.append(l_extra_fa[findheaderinline(l_extra_fa, "Cladding material", time=i+1) + 1].split()[0])
+            if ngt[i + 1] > 0:
+                gt_id[i + 1] = float(l_extra_fa[findheaderinline(l_extra_fa,
+                                                                 "Inner diameter of guide tube/water rod",
+                                                                 time=i+1) + 1].split()[0])
+                gt_od[i + 1] = float(l_extra_fa[findheaderinline(l_extra_fa,
+                                                                 "Outer diameter of guide tube/water rod",
+                                                                 time=i+1) + 1].split()[0])
+                gt_mat.append(l_extra_fa[findheaderinline(l_extra_fa,
+                                                          "Guide tube/water rod material",
+                                                           time=i + 1) + 1].split()[0])
+                for j in range(0, ngt[i + 1]):
+                    linaux = l_extra_fa[findheaderinline(l_extra_fa, "Use X Y format",
+                                                         time=i+1) + 1+j].split()
+                    gtpos[i + 1][j][0] = int(linaux[0])
+                    gtpos[i + 1][j][1] = int(linaux[1])
+                    rodtype[i + 1][int(linaux[0]) - 1][int(linaux[1]) - 1] = 1
 
-    # creates absolute coordinates for the center of the different FAs. They are created for both empty-water-
-    # FAs so that it has to be filtered afterwards. The reference is set in top left corner so that
-    # first coordinate refers to rows and second coordinate refers to columns
+            else:
+                gt_mat.append("X")
 
-    core_cent = np.zeros((fa_numrow, fa_numcol, 2), dtype=float)
-
-    for i in range(fa_numcol):
-        for j in range(fa_numrow):
-            core_cent[j][i][0] = ((i+1) - 0.5 - float(fa_numcol)/2)*bp
-            core_cent[j][i][1] = (float(fa_numrow)/2 + 0.5 - (j+1))*bp
-
-    # this matrix will only contain the center of the FAs
-
-    fa_cent = np.zeros((fa_num, 2), dtype=float)
-
-    # stores the fuel assembly map
-    # fa_transl contains an ordered list of the positions in the core array that have an actual FA
-    fa_transl = np.zeros(fa_num, dtype=int)
-    fa_types = np.zeros(fa_num, dtype=int)
+    fa_types_list = np.zeros(fa_num, dtype=int)
 
     # core map has the core map, with the positions and the indexes
 
     core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
-    cont_a = 1
-    cont_b = 0
+    numb_core_map = np.zeros((fa_numrow, fa_numcol), dtype=int)
+    core_centX = np.zeros(fa_numcol, dtype=np.float64)
+    core_centY = np.zeros(fa_numrow, dtype=np.float64)
+
+    for i in range(0, fa_numcol):
+        core_centX[i] = ((i + 1) - 0.5 - float(fa_numcol) / 2) * bp
+
+    for i in range(0, fa_numrow):
+        core_centY[i] = ((i + 1) - 0.5 - float(fa_numcol) / 2) * bp
+
+    core_centY = -1 * core_centY
+    # TODO try with non-square core arrays
 
     # edit fa_transl, edit core_map
 
+    cont_a = 1
+    cont_b = 0
     for i in range(fa_numrow):
         linaux = (l_geo[findheaderinline(l_geo, "FUEL ASSEMBLY MAP") + 2+i].split())
+        linaux2 = lines[findheaderinline(lines, "Assembly Map") + 1 + i].split()
         for j in range(fa_numcol):
             if int(linaux[j+1]) != 0:
-                fa_transl[cont_b] = cont_a
-                fa_types[cont_b] = int(linaux[j+1])
-                fa_cent[cont_b] = core_cent[i][j]
+                fa_types_list[cont_b] = int(linaux[j+1])
                 cont_b = cont_b + 1
 
             core_map[i][j] = int(linaux[j+1])
             cont_a = cont_a + 1
+            numb_core_map[i][j] = int(linaux2[j])
 
-    # conectivity of the different subchannels
+    # gets the number of connections between adjacent core maps
 
-    fa_connect = np.zeros((fa_num, 2), dtype=int)
-    connect_in_row = np.zeros((fa_numrow, 2), dtype=int)
-    num_sides_connect = int(0)
-    # a matrix that stores two values for every fuel assembly. First component is valued 1 if there is another
-    # FA just rightwards and valued 0 if not. The same for the second component but it checks if there is a FA
-    # just downwards
+    fa_connections = int(0)
+    for i in range(0, fa_numrow):
+        for j in range(0, fa_numcol):
+            if core_map[i][j] != 0:
+                if i != fa_numrow - 1:
+                    if j != fa_numcol - 1:
+                        if core_map[i][j+1] != 0:
+                            fa_connections += 1
+                        if core_map[i+1][j] != 0:
+                            fa_connections += 1
 
-    aux = int(0)
-    aux1 = int(0)
-    aux2 = int(0)
-    memaux = int(0)
-    for i in range(0, fa_num - 1):
-        auxvar = ret_FA(fa_numcol, fa_transl[i])
-        if fa_transl[i] > fa_numcol:
-            if fa_transl[i] % fa_numcol != 0:
-                if fa_transl[i] // fa_numcol != fa_numrow - 1:
-                    if core_map[auxvar[0]-1][auxvar[1]] != 0:
-                        fa_connect[i][0] = 1
-                    if core_map[auxvar[0]][auxvar[1]-1] != 0:
-                        fa_connect[i][1] = 1
+                    else:
+                        if core_map[i+1][j] != 0:
+                            fa_connections += 1
 
                 else:
-                    if core_map[auxvar[0]-1][auxvar[1]] != 0:
-                        fa_connect[i][0] = 1
+                    if j != fa_numcol - 1:
+                        if core_map[i][j+1] != 0:
+                            fa_connections += 1
 
-            else:
-                if core_map[auxvar[0]][auxvar[1] - 1] != 0:
-                    fa_connect[i][1] = 1
-
-        else:
-            if fa_transl[i] % fa_numcol != 0:
-                if core_map[auxvar[0] - 1][auxvar[1]] != 0:
-                    fa_connect[i][0] = 1
-                if core_map[auxvar[0]][auxvar[1] - 1] != 0:
-                    fa_connect[i][1] = 1
-            else:
-                if core_map[auxvar[0]][auxvar[1] - 1] != 0:
-                    fa_connect[i][1] = 1
-
-        num_sides_connect = num_sides_connect + fa_connect[i][0] + fa_connect[i][1]
-        auxrow = (fa_transl[i] - 1 ) // fa_numcol + 1
-        connect_in_row[auxrow - 1][0] += fa_connect[i][0]
-        connect_in_row[auxrow - 1][1] += fa_connect[i][1]
-
-    # local parameters in a FA
-    free_sp = (bp - (nrods_side-1)*pp)/2
+    gap_betw_fa_tot = fa_connections * newchn_side
+    newngaps_tot = gap_betw_fa_tot + fa_num * inner_gaps_in_new_fa
 
     # now, for every FA type, generic info about channels (An, Pw, XSIZ, YSIZ) should be created
-
     # creates an array to store the outer diameters of the rods
 
-    od_s = []
+    od_s = np.zeros((fa_types, 2), dtype=float)
+    od_s[0][0] = fr_od[0]
 
-    if ngt > 0:
-        od_s = np.ones(2, dtype=float)
-        od_s[0] = fr_od
-        od_s[1] = gt_od
+    if ngt[0] > 0:
+        od_s[0][1] = gt_od[0]
 
-    # print(rodtype)
-    od_rods = fr_od*np.ones(nrods, dtype=float)
-    # print(ngt)
-    # print(od_s)
-    if ngt > 0:
-        for i in range(0, nrods):
-            od_rods[i] = od_s[rodtype[i]]
+    od_rods = np.ones((fa_types, nrods_side, nrods_side), dtype=float)
+
+
+    for i in range(0, fa_types):
+        od_s[i][0] = fr_od[i]
+        if ngt[i] > 0:
+            od_s[i][1] = gt_od[i]
+        for j in range(0, nrods_side):
+            for k in range(0, nrods_side):
+                od_rods[i][j][k] = od_s[i][rodtype[i][j][k]]
 
     # creates an array with the subchannels that correspond to a rod
 
-    subchannels_in_rod = np.zeros((nrods, 2, 2), dtype=int)
-    rods_for_subchannel = np.zeros((nchn, 2, 2), dtype=int)
-    contvect = np.zeros(nchn, dtype=int)
-    for i in range(0, nrods):
-        top = i+1 + i//(nchn_side-1)
-        subchannels_in_rod[i][0][0] = top
-        subchannels_in_rod[i][0][1] = top + 1
-        subchannels_in_rod[i][1][0] = top + nchn_side
-        subchannels_in_rod[i][1][1] = top + nchn_side+1
+    subchannels_in_rod = np.zeros((nrods_side, nrods_side, 2, 2, 2), dtype=int)
+    rods_for_subchannel = -1 * np.ones((nchn_side, nchn_side, 2, 2, 2), dtype=int)
 
-    for i in range(0, nrods):
-        for j in range(0, 2):
-            for k in range(0, 2):
-                rods_for_subchannel[subchannels_in_rod[i][j][k] - 1][1-j][1-k] = i + 1
+    for i in range(0, nrods_side):
+        for j in range(0, nrods_side):
+            subchannels_in_rod[i][j][0][0] = [i, j]
+            subchannels_in_rod[i][j][0][1] = [i, j + 1]
+            subchannels_in_rod[i][j][1][0] = [i + 1, j]
+            subchannels_in_rod[i][j][1][1] = [i + 1, j + 1]
+
+    for i in range(0, nchn_side):
+        for j in range(0, nchn_side):
+            if i != 0:
+                if i != nchn_side - 1:
+                    if j != 0:
+                        if j != nchn_side - 1:
+                            rods_for_subchannel[i][j][0][0] = [i - 1, j - 1]
+                            rods_for_subchannel[i][j][0][1] = [i - 1, j]
+                            rods_for_subchannel[i][j][1][0] = [i, j - 1]
+                            rods_for_subchannel[i][j][1][1] = [i, j]
+                        else:
+                            rods_for_subchannel[i][j][0][0] = [i - 1, j - 1]
+                            rods_for_subchannel[i][j][1][0] = [i, j - 1]
+
+                    else:
+                        rods_for_subchannel[i][j][0][1] = [i - 1, j]
+                        rods_for_subchannel[i][j][1][1] = [i, j]
+
+                else:
+                    if j != 0:
+                        if j != nchn_side - 1:
+                            rods_for_subchannel[i][j][0][0] = [i - 1, j - 1]
+                            rods_for_subchannel[i][j][0][1] = [i - 1, j]
+
+                        else:
+                            rods_for_subchannel[i][j][0][0] = [i - 1, j - 1]
+
+                    else:
+                        rods_for_subchannel[i][j][0][1] = [i - 1, j]
+
+            else:
+                if j != 0:
+                    if j != nchn_side - 1:
+                        rods_for_subchannel[i][j][1][0] = [i, j - 1]
+                        rods_for_subchannel[i][j][1][1] = [i, j]
+
+                    else:
+                        rods_for_subchannel[i][j][1][0] = [i, j - 1]
+
+                else:
+                    rods_for_subchannel[i][j][1][1] = [i, j]
 
     # creates a matrix to store the data of the subchannels, so they can be merged afterwards
 
-    an = np.zeros(nchn, dtype=np.float64)
-    pw = np.zeros(nchn, dtype=np.float64)
-    xsiz = np.zeros(nchn, dtype=np.float64)
-    ysiz = np.zeros(nchn, dtype=np.float64)
-    coords = np.zeros(nchn_side, dtype=np.float64)
-    channX = np.zeros(nchn, dtype=np.float64)
-    channY = np.zeros(nchn, dtype=np.float64)
+    xsiz = np.zeros(nchn_side, dtype=np.float64)
+    ysiz = np.zeros(nchn_side, dtype=np.float64)
+    new_xsiz = np.zeros(newchn_side, dtype=np.float64)
+    new_ysiz = np.zeros(newchn_side, dtype=np.float64)
 
-    # identifies corner, side (horizontal and vertical) and center subchannels
+    xsiz[0] = free_sp
+    ysiz[0] = free_sp
+    xsiz[-1] = free_sp
+    ysiz[-1] = free_sp
 
-    chan_corner = np.array([1, nchn_side, nchn - nchn_side + 1, nchn], dtype=int)
-    chan_sideH = np.zeros(2*(nchn_side-2), dtype=int)
-    chan_sideV = np.zeros(2*(nchn_side-2), dtype=int)
-    chan_center = np.zeros((nchn_side - 2)**2, dtype=int)
+    new_xsiz[0] = free_sp + (dlev - 1) * pp
+    new_xsiz[-1] = free_sp + (dlev - 1) * pp
+    new_ysiz[0] = free_sp + (dlev - 1) * pp
+    new_ysiz[-1] = free_sp + (dlev - 1) * pp
 
-    for i in range(0, nchn_side-2):
-        chan_sideH[i] = 2+i
-        chan_sideH[nchn_side-2+i] = nchn - nchn_side + 2 + i
-        chan_sideV[2*i] = nchn_side + 1 + i*nchn_side
-        chan_sideV[2*i+1] = 2*nchn_side + i*nchn_side
+    for i in range(1, nchn_side - 1):
+        xsiz[i] = pp
+        ysiz[i] = pp
 
-    for i in range(0, (nchn_side-2)**2):
-        chan_center[i] = nchn_side + 2 + i % (nchn_side-2) + nchn_side * (i // (nchn_side-2))
+    for i in range(1, newchn_side - 1):
+        new_xsiz[i] = dlev * pp
+        new_ysiz[i] = dlev * pp
+
+    # TODO ysiz and new_ysiz will be redundant as long as the FAs are squared arrays
+
+    an = np.zeros((nchn_side, nchn_side), dtype=np.float64)
+    an_0 = np.zeros((nchn_side, nchn_side), dtype=np.float64)
+    gapsX_gap = np.zeros((fa_types, nchn_side, nchn_side - 1), dtype=np.float64)
+    gapsY_gap = np.zeros((fa_types, nchn_side - 1, nchn_side), dtype=np.float64)
+
+    for i in range(0, nchn_side):
+        for j in range(0, nchn_side):
+            an_0[i][j] = xsiz[j] * ysiz[i]
+
+    pw = np.zeros((nchn_side, nchn_side), dtype=np.float64)
 
     # gives values to the subchannel data
 
-    coords[0] = -bp/2 + free_sp/2
-    coords[-1] = bp/2 - free_sp/2
-    for i in range(1, nchn_side-1):
-        coords[i] = -bp/2 + free_sp + pp / 2 + (i-1)*pp
+    new_coordsX = np.zeros(newchn_side, dtype=np.float64)
+    new_coordsX[0] = -bp / 2 + (free_sp + (dlev - 1) * pp) / 2
+    new_coordsX[-1] = bp / 2 - (free_sp + (dlev - 1) * pp) / 2
 
-    # edits coordinate data
+    for i in range(1, newchn_side - 1):
+        new_coordsX[i] = -bp / 2 + free_sp + (dlev - 1) * pp + dlev * pp / 2 + (i - 1) * dlev * pp
 
-    for i in range(0, nchn):
-        channX[i] = coords[i % nchn_side]
-        channY[i] = coords[-(i//nchn_side + 1)]
-
-    for i in range(0, 4):
-        xsiz[chan_corner[i]-1] = free_sp
-        ysiz[chan_corner[i]-1] = free_sp
-
-    for i in range(0, 2*(nchn_side-2)):
-        xsiz[chan_sideH[i] - 1] = pp
-        ysiz[chan_sideH[i] - 1] = free_sp
-        xsiz[chan_sideV[i] - 1] = free_sp
-        ysiz[chan_sideV[i] - 1] = pp
-
-    for i in range(0, (nchn_side-2)**2):
-        xsiz[chan_center[i] - 1] = pp
-        ysiz[chan_center[i] - 1] = pp
+    new_coordsY = -1 * new_coordsX
 
     # edits nominal area and wet perimeter for the channels
 
-    for i in range(0, nchn):
-        an[i] = xsiz[i]*ysiz[i]
-
-    for i in range(0, nrods):
-        for j in range(0, 2):
-            for k in range(0, 2):
-                an[subchannels_in_rod[i][j][k]-1] -= math.pi/4 * (od_rods[i]**2) * 0.25
-                pw[subchannels_in_rod[i][j][k]-1] += math.pi * od_rods[i] * 0.25
-
     # creates an array that stores the number of subchannels that belong to the new channel
-    subchannels_in_channel = np.zeros((newchn, dlev, dlev), dtype=int)
-    for i in range(0, newchn):
-        for j in range(0, dlev):
-            for k in range(0, dlev):
-                subchannels_in_channel[i][j][k] = refchannel(i+1, dlev, nchn_side) + j*nchn_side + k
+    subchannels_in_channel = np.zeros((newchn_side, newchn_side, dlev, dlev, 2), dtype=int)
+    for i in range(0, nchn_side):
+        for j in range(0, nchn_side):
+            subchannels_in_channel[i // dlev][j // dlev][i % dlev][j % dlev] = [i, j]
 
     # defines a function that finds if a subchannel (subch) is contained in a certain new channel that
     # will contain dlev*dlev subchannels
@@ -452,421 +511,100 @@ def main():
 
     # new channel data
 
-    new_an_pw = np.zeros((newchn, 2))
-    new_sizes = np.zeros((newchn, 2))
-    new_loc_channels = np.zeros((newchn, 2))
+    new_an_pw = np.zeros((fa_types, newchn_side, newchn_side, 2), dtype=np.float64)
+    new_sizes = np.zeros(newchn_side, dtype=np.float64)
+    new_sizes[0] = free_sp + (dlev - 1) * pp
+    new_sizes[-1] = free_sp + (dlev - 1) * pp
+    new_gapsX_gap = np.zeros((fa_types, newchn_side, newchn_side - 1), dtype=np.float64)
+    new_gapsY_gap = np.zeros((fa_types, newchn_side - 1, newchn_side), dtype=np.float64)
 
-    for i in range(0, subchannels_in_channel.shape[0]):
-        aux1 = 0
-        aux2 = 0
-        aux_x = 0
-        aux_y = 0
-        for j in range(0, subchannels_in_channel.shape[1]):
-            for k in range(0,  subchannels_in_channel.shape[2]):
-                aux1 += an[int(subchannels_in_channel[i][j][k])-1]
-                aux2 += pw[int(subchannels_in_channel[i][j][k])-1]
-                if j == 0:
-                    aux_x += xsiz[int(subchannels_in_channel[i][j][k])-1]
-                if k == 0:
-                    aux_y += ysiz[int(subchannels_in_channel[i][j][k])-1]
+    for i in range(1, newchn_side - 1):
+        new_sizes[i] = dlev * pp
 
-        new_an_pw[i][0] = aux1
-        new_an_pw[i][1] = aux2
-        new_sizes[i][0] = aux_x
-        new_sizes[i][1] = aux_y
-        if i == 0:
-            new_loc_channels[0][0] = -bp/2 + new_sizes[0][0]/2
-            new_loc_channels[0][1] = bp/2 - new_sizes[0][1]/2
-        else:
-            if ((i-1) // nchn_side) == (i // nchn_side):
-                new_loc_channels[i][0] = new_loc_channels[i-1][0] + (new_sizes[i-1][0] + new_sizes[i][0])/2
-                new_loc_channels[i][1] = new_loc_channels[i-1][1]
-            else:
-                new_loc_channels[i][0] = new_loc_channels[i-nchn_side][0]
-                new_loc_channels[i][1] = new_loc_channels[i-nchn_side][1] - (new_sizes[i-nchn_side][1]+new_sizes[i][1])/2
+    for n in range(0, fa_types):
+        pw = np.zeros((nchn_side, nchn_side), dtype=np.float64)
+        an = an_0
+        for i in range(0, nrods_side):
+            for j in range(0, nrods_side):
+                for k in range(0, 2):
+                    for l in range(0, 2):
+                        an[subchannels_in_rod[i][j][k][l][0]][subchannels_in_rod[i][j][k][l][1]] -= math.pi / 4 * \
+                                                                                                    (od_rods[n][i][j] ** 2) * 0.25
+                        pw[subchannels_in_rod[i][j][k][l][0]][subchannels_in_rod[i][j][k][l][1]] += math.pi * \
+                                                                                                    od_rods[n][i][j] * 0.25
 
-    # creates data for the new channels
+        for i in range(0, newchn_side):
+            for j in range(0, newchn_side):
+                aux1 = 0
+                aux2 = 0
+                for k in range(0, dlev):
+                    for l in range(0,  dlev):
+                        aux1 += an[int(subchannels_in_channel[i][j][k][l][0])][int(subchannels_in_channel[i][j][k][l][1])]
+                        aux2 += pw[int(subchannels_in_channel[i][j][k][l][0])][int(subchannels_in_channel[i][j][k][l][1])]
 
-    channelsindextot = np.zeros(newchn_tot, dtype=int)
-    for i in range(0, newchn_tot):
-        channelsindextot[i] = (i+1)
+                new_an_pw[n][i][j][0] = aux1
+                new_an_pw[n][i][j][1] = aux2
 
-    assemb_in_row = np.zeros(fa_numrow, dtype=int)
-    acum_assemb_in_row = np.zeros(fa_numrow, dtype=int)
-    newchn_in_core_row = np.zeros(fa_numrow, dtype=int)
-    acum_newchn_in_core_row = np.zeros(fa_numrow, dtype=int)
-    newchn_in_fa_row = np.zeros(fa_numrow, dtype=int)
-    acum_newchn_in_fa_row = np.zeros(fa_numrow, dtype=int)
-    # defines the magnitudes for the Card 2 to be edited and written
+    rod = np.zeros((2, 2), dtype=int)
+    auxsubch = np.zeros(2, dtype=int)
+    for n in range(0, fa_types):
+        for i in range(0, newchn_side):
+            for j in range(0, newchn_side):
+                if i != newchn_side - 1:
+                    if j != newchn_side - 1:
+                        new_gapsX_gap[n][i][j] = new_sizes[i]
+                        new_gapsY_gap[n][i][j] = new_sizes[j]
+                        for k in range(0, dlev):
+                            auxsubch = [subchannels_in_channel[i][j][k][dlev - 1][0],
+                                        subchannels_in_channel[i][j][k][dlev - 1][1]]
 
-    card2_chan = np.zeros(newchn_tot, dtype=int)
-    card2_an = np.zeros(newchn_tot, dtype=np.float64)
-    card2_pw = np.zeros(newchn_tot, dtype=np.float64)
-    card2_X = np.zeros(newchn_tot, dtype=np.float64)
-    card2_Y = np.zeros(newchn_tot, dtype=np.float64)
-    card2_XSIZ = np.zeros(newchn_tot, dtype=np.float64)
-    card2_YSIZ = np.zeros(newchn_tot, dtype=np.float64)
+                            for l in range(0, 2):
 
-    for i in range(0, fa_numrow):
-        auxvar = 0
-        for j in range(0, fa_numcol):
-            if core_map[i][j] != 0:
-                auxvar += 1
+                                rod[l][0] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][l][1][0]
+                                if rod[l][0] != -1:
+                                    rod[l][1] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][l][1][1]
+                                    new_gapsX_gap[n][i][j] -= 0.5 * od_rods[n][rod[l][0]][rod[l][1]]
 
-        assemb_in_row[i] = auxvar
-        newchn_in_core_row[i] = auxvar * newchn_side
-        newchn_in_fa_row[i] = auxvar * newchn
+                            auxsubch = [subchannels_in_channel[i][j][dlev - 1][k][0],
+                                        subchannels_in_channel[i][j][dlev - 1][k][1]]
 
-        if i == 0:
+                            for l in range(0, 2):
 
-            acum_assemb_in_row[i] = assemb_in_row[i]
-            acum_newchn_in_core_row[i] = newchn_in_core_row[i]
-            acum_newchn_in_fa_row[i] = newchn_in_fa_row[i]
+                                rod[l][0] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][1][l][0]
+                                if rod[l][0] != -1:
+                                    rod[l][1] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][1][l][1]
+                                    new_gapsY_gap[n][i][j] -= 0.5 * od_rods[n][rod[l][0]][rod[l][1]]
 
-        else:
-            acum_assemb_in_row[i] = acum_assemb_in_row[i-1] + assemb_in_row[i]
-            acum_newchn_in_core_row[i] = acum_newchn_in_core_row[i-1] + newchn_in_core_row[i]
-            acum_newchn_in_fa_row[i] = acum_newchn_in_fa_row[i-1] + newchn_in_fa_row[i]
+                    else:
+                        new_gapsY_gap[n][i][j] = new_sizes[j]
+                        for k in range(0, dlev):
+                            auxsubch = [subchannels_in_channel[i][j][dlev - 1][k][0],
+                                        subchannels_in_channel[i][j][dlev - 1][k][1]]
 
-    for i in range(0, newchn_tot):
-        card2_chan[i] = i+1
-        # TODO some lines should be added here so as to change the channel data depending on the type of the fa
-        auxrow = 1
+                            for l in range(0, 2):
 
-        for j in range(1, fa_numrow):
-            if i+1 > acum_newchn_in_fa_row[j-1] and i+1 <=  acum_newchn_in_fa_row[j]:
-                auxrow = j+1
+                                rod[l][0] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][1][l][0]
+                                if rod[l][0] != -1:
+                                    rod[l][1] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][1][l][1]
+                                    new_gapsY_gap[n][i][j] -= 0.5 * od_rods[n][rod[l][0]][rod[l][1]]
 
-            else:
-                if i + 1 <= acum_newchn_in_fa_row[0]:
-                    auxrow = 1
+                else:
+                    if j != newchn_side - 1:
+                        new_gapsX_gap[n][i][j] = new_sizes[i]
+                        for k in range(0, dlev):
+                            auxsubch = [subchannels_in_channel[i][j][k][dlev - 1][0],
+                                        subchannels_in_channel[i][j][k][dlev - 1][1]]
 
-        if auxrow == 1:
-            chanreset = i + 1
+                            for l in range(0, 2):
 
-        else:
-            chanreset = i + 1 - acum_newchn_in_fa_row[auxrow-2]
-
-        auxrow2 = ((chanreset - 1) // newchn_in_core_row[auxrow - 1]) + 1
-        chanreset2 = chanreset - newchn_in_core_row[auxrow - 1] * (auxrow2 - 1)
-        aux_fa = int(((chanreset2 - 1) // newchn_side) + 1)
-        chanreset3 = chanreset2 - (aux_fa - 1) * newchn_side
-        # aux_fatype = core_map[auxrow - 1][aux_fa - 1]
-        index_in_fa = chanreset3 + (auxrow2 - 1) * newchn_side
-        card2_an[i] = new_an_pw[index_in_fa - 1][0]
-        card2_pw[i] = new_an_pw[index_in_fa - 1][1]
-        card2_XSIZ[i] = new_sizes[index_in_fa - 1][0]
-        card2_YSIZ[i] = new_sizes[index_in_fa - 1][1]
-
-        if auxrow == 1:
-            card2_X[i] = new_loc_channels[index_in_fa - 1][0] + fa_cent[aux_fa - 1][0]
-            card2_Y[i] = new_loc_channels[index_in_fa - 1][1] + fa_cent[aux_fa - 1][1]
-
-        else:
-            card2_X[i] = new_loc_channels[index_in_fa - 1][0] + fa_cent[acum_assemb_in_row[auxrow - 2] + aux_fa - 1][
-                0]
-            card2_Y[i] = new_loc_channels[index_in_fa - 1][1] + fa_cent[acum_assemb_in_row[auxrow - 2] + aux_fa - 1][
-                1]
-
-    # sets a new origin in the numeration for the channels
-
-    if ngt > 0:
-        print(gtpos)
-
-    # creates TOTRODSROW TOTRODSCOL TOTCHANSROW TOTCHANSCOL
-
-    totrodsrow_n = fa_numrow * newchn_side
-    totrodscol_n = fa_numcol * newchn_side
-    totchansrow_n = totrodsrow_n
-    totchanscol_n = totrodscol_n
-    linaux = lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL") + 1].split()
-    totrodsrow_o = int(linaux[0])
-    totrodscol_o = int(linaux[1])
-    linaux = lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL") + 1].split()
-    totchansrow_o = int(linaux[0])
-    totchanscol_o = int(linaux[1])
+                                rod[l][0] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][l][1][0]
+                                if rod[l][0] != -1:
+                                    rod[l][1] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][l][1][1]
+                                    new_gapsX_gap[n][i][j] -= 0.5 * od_rods[n][rod[l][0]][rod[l][1]]
 
     # gets NK - the number of gaps - from Card 3.1. Calculates the new number of gaps
 
     ngaps_tot = int(lines[findheaderinline(lines, "NK NDM2 NDM3") + 1].split()[0])
-    old_gaps_in_fa = 2 * nchn_side * (nchn_side - 1)
-    inner_gaps_in_fa = 2 * newchn_side * (newchn_side-1)
-    newngaps_tot = num_sides_connect * newchn_side + inner_gaps_in_fa * fa_num
-    short_gap = card2_YSIZ[newchn_side - 1]#free_sp + (dlev - 1) * pp card # dimensions for the long and short gap between assemblies
-    long_gap = card2_YSIZ[2*newchn_side - 1]
-
-    # Creates gap data. First it creates gap data for a single assembly (in the future, for every type of assembly)
-
-    def findthechannelingaps(vgaps, val, time=1):
-        # finds the first channel with number of channel val in the vector of gaps and returns the number of gap
-        aux = 0
-        clock = 1
-        for i in range(0, old_gaps_in_fa):
-            if vgaps[i][0] == val:
-                if clock < time:
-                    clock = clock +1
-                else:
-                    aux = i+1
-                    break
-        return aux
-
-    coords2 = np.zeros(nchn_side - 1, dtype=np.float64)  # the other possible coordinate is already in coords
-    coords2[0] = - bp / 2 + free_sp
-    coords2[-1] = bp / 2 - free_sp
-
-    for i in range(1, nchn_side - 2):
-        coords2[i] = coords2[i - 1] + pp
-
-    rod1 = int(0)
-    rod2 = int(0)
-    d1 = float(0)
-    d2 = float(0)
-    oldgap_type = []  # its final size should old_gaps_in_fa
-    old_gap_connects = np.zeros((old_gaps_in_fa, 2), dtype=int)
-    old_gap_gap = np.zeros(old_gaps_in_fa, dtype=np.float64)
-    new_gap_connect = np.zeros((inner_gaps_in_fa, 2), dtype=int)
-    new_gap_gaps = np.zeros(inner_gaps_in_fa, dtype=np.float64)
-    new_loc_gaps = np.zeros((inner_gaps_in_fa, 2), dtype=np.float64)
-    new_gap_lngts = np.zeros(inner_gaps_in_fa, dtype=np.float64)
-    new_gap_dirs = []
-    tot_gap_connect = np.zeros((newngaps_tot, 2), dtype=int)
-    tot_gap_gaps =  np.zeros(newngaps_tot, dtype=np.float64)
-    tot_loc_gaps = np.zeros((newngaps_tot, 2), dtype=np.float64)
-    tot_gap_lngts = np.zeros(newngaps_tot, dtype=np.float64)
-    tot_gap_dirs = []
-
-    nrep = 2 * nchn_side - 1
-
-    for i in range(0, old_gaps_in_fa):
-        if i <= old_gaps_in_fa - nchn_side:
-            if (i + 1) % nrep == 0:
-                oldgap_type.append('y')
-                old_gap_connects[i][0] = nchn_side*((i+1) // nrep)
-                old_gap_connects[i][1] = old_gap_connects[i][0] + nchn_side
-                old_gap_gap[i] = free_sp
-                rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][0]
-                old_gap_gap[i] -= 0.5 * od_rods[rod1 - 1]
-
-            else:
-                if ((i+1) % nrep) % 2 == 1:
-                    oldgap_type.append('x')
-                    old_gap_connects[i][0] = ((i+1) // nrep) * nchn_side + (((i+1) % nrep) // 2) + 1
-                    old_gap_connects[i][1] = old_gap_connects[i][0] + 1
-                    if i + 1 <= nrep:
-                        old_gap_gap[i] = free_sp
-                        rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][1]
-                        old_gap_gap[i] -= 0.5 * od_rods[rod1 - 1]
-                    else:
-                        old_gap_gap[i] = pp
-                        rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][0][1]
-                        rod2 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][1]
-                        old_gap_gap[i] -= 0.5 * (od_rods[rod1 - 1] + od_rods[rod2 - 1])
-
-                else:
-                    oldgap_type.append('y')
-                    old_gap_connects[i][0] = ((i + 1) // nrep) * nchn_side + (((i + 1) % nrep) // 2)
-                    old_gap_connects[i][1] = old_gap_connects[i][0] + nchn_side
-                    if (i + 1) % nrep == 2:
-                        old_gap_gap[i] = free_sp
-                        rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][1]
-                        old_gap_gap[i] -= 0.5 * od_rods[rod1 - 1]
-                    else:
-                        old_gap_gap[i] = pp
-                        rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][0]
-                        rod2 = rods_for_subchannel[old_gap_connects[i][0] - 1][1][1]
-                        old_gap_gap[i] -= 0.5 * (od_rods[rod1 - 1] + od_rods[rod2 - 1])
-
-        else:
-            oldgap_type.append('x')
-            old_gap_connects[i][0] = (nchn_side-1) * nchn_side + ((i + 1) % nrep)
-            old_gap_connects[i][1] = old_gap_connects[i][0] + 1
-            old_gap_gap[i] = free_sp
-            rod1 = rods_for_subchannel[old_gap_connects[i][0] - 1][0][1]
-            old_gap_gap[i] -= 0.5 * od_rods[rod1 - 1]
-
-    nrep = 2 * newchn_side - 1
-
-    for i in range(0, inner_gaps_in_fa):
-        aux = np.float64(0)
-        if i <= inner_gaps_in_fa - newchn_side:
-            if (i + 1) % nrep == 0:
-                new_gap_dirs.append('y')
-                new_gap_connect[i][0] = newchn_side * ((i + 1) // nrep)
-                new_gap_connect[i][1] = new_gap_connect[i][0] + newchn_side
-            else:
-                if ((i + 1) % nrep) % 2 == 1:
-                    new_gap_dirs.append('x')
-                    new_gap_connect[i][0] = ((i + 1) // nrep) * newchn_side + (((i + 1) % nrep) // 2) + 1
-                    new_gap_connect[i][1] = new_gap_connect[i][0] + 1
-                else:
-                    new_gap_dirs.append('y')
-                    new_gap_connect[i][0] = ((i + 1) // nrep) * newchn_side + (((i + 1) % nrep) // 2)
-                    new_gap_connect[i][1] = new_gap_connect[i][0] + newchn_side
-
-        else:
-            new_gap_dirs.append('x')
-            new_gap_connect[i][0] = (newchn_side - 1) * newchn_side + ((i + 1) % nrep)
-            new_gap_connect[i][1] = new_gap_connect[i][0] + 1
-
-        if new_gap_dirs[i] == 'x':
-            for j in range(0, dlev):
-                search = subchannels_in_channel[new_gap_connect[i][0]-1][j][dlev - 1]
-                aux += old_gap_gap[findthechannelingaps(old_gap_connects, search, time=1) - 1]
-            new_gap_lngts[i] = new_loc_channels[new_gap_connect[i][1]-1][0] - new_loc_channels[new_gap_connect[i][0]-1][0]
-            new_loc_gaps[i][0] = new_loc_channels[new_gap_connect[i][0]-1][0] + new_sizes[new_gap_connect[i][0]-1][0]/2
-            if abs(new_loc_gaps[i][0]) < 1e-6:
-                new_loc_gaps[i][0] = 0.0
-            new_loc_gaps[i][1] = new_loc_channels[new_gap_connect[i][0]-1][1]
-
-        if new_gap_dirs[i] == 'y':
-            for j in range(0, dlev):
-                search = subchannels_in_channel[new_gap_connect[i][0]-1][dlev-1][j]
-                aux += old_gap_gap[findthechannelingaps(old_gap_connects, search, time=2) - 1]
-            new_gap_lngts[i] = new_loc_channels[new_gap_connect[i][0]-1][1] - new_loc_channels[new_gap_connect[i][1]-1][1]
-            new_loc_gaps[i][0] = new_loc_channels[new_gap_connect[i][0]-1][0]
-            new_loc_gaps[i][1] = new_loc_channels[new_gap_connect[i][0]-1][1] - new_sizes[new_gap_connect[i][0]-1][1]/2
-            if abs(new_loc_gaps[i][1]) < 1e-6:
-                new_loc_gaps[i][1] = 0.0
-
-        new_gap_gaps[i] = aux
-
-    aux = int(0)
-    nrep = 2 * newchn_side - 1
-    totgaps_per_row = np.zeros(totrodsrow_n, dtype=int)
-    acum_gaps_per_row = np.zeros(totrodsrow_n, dtype=int)
-    for i in range(0, totrodsrow_n):
-        aux = i // newchn_side + 1
-        if i % newchn_side == newchn_side - 1:
-            totgaps_per_row[i] = (newchn_side - 1) * assemb_in_row[aux - 1]\
-                                 + connect_in_row[aux - 1][1] * newchn_side\
-                                 + connect_in_row[aux - 1][0]
-
-        else:
-            totgaps_per_row[i] = nrep * assemb_in_row[aux - 1]\
-                                 + connect_in_row[aux - 1][0]
-
-    for i in range(0, totrodsrow_n):
-        if i == 0:
-            acum_gaps_per_row[i] = totgaps_per_row[i]
-
-        else:
-            acum_gaps_per_row[i] = acum_gaps_per_row[i - 1] + totgaps_per_row[i]
-
-    auxrow = int(0)
-    nrep_max = 2 * totrodscol_n - 1
-    nrep = 2 * newchn_side - 1
-    nrep1 = newchn_side - 1
-    tot_gaps_guide = np.zeros((totrodsrow_n, nrep_max), dtype=int)
-    aux = int(0)
-    for i in range(0, totrodsrow_n):
-        aux = 0
-        auxrow = (i // newchn_side) + 1
-        if i + 1 <= totrodsrow_n - 1:
-            if (i + 1) % newchn_side != 0:
-                for j in range(0, fa_numcol):
-                    if j != fa_numcol - 1:
-                        if core_map[auxrow - 1][j] != 0:
-                            for k in range(0, nrep):
-                                tot_gaps_guide[i][aux + k] = 1
-                                # if i == 4:
-                                #     print(tot_gaps_guide[i][aux + k])
-                            if core_map[auxrow - 1][j + 1] != 0:
-                                tot_gaps_guide[i][aux + nrep - 1] = -1
-                                tot_gaps_guide[i][aux + nrep] = 1
-                                aux += nrep + 1
-
-                            else:
-                                aux += nrep
-
-                    else:
-                        if core_map[auxrow - 1][j] != 0:
-                            for k in range(0, nrep):
-                                tot_gaps_guide[i][aux + k] = 1
-
-
-            else:
-                for j in range(0, fa_numcol):
-                    if j != fa_numcol - 1:
-                        if core_map[auxrow - 1][j] != 0:
-                            if core_map[auxrow][j] != 0:
-                                for k in range(0, nrep):
-                                    if k == nrep - 1:
-                                        tot_gaps_guide[i][aux + k] = -1
-                                    else:
-                                        if k + 1 % 2 == 1:
-                                            tot_gaps_guide[i][aux + k] = 1
-                                        else:
-                                            tot_gaps_guide[i][aux + k] = -1
-
-                                if core_map[auxrow - 1][j + 1] != 0:
-                                    tot_gaps_guide[i][aux + nrep] = -1
-                                    aux += nrep + 1
-                                else:
-                                    aux += nrep
-
-                            else:
-                                for k in range(0, nrep1):
-                                    tot_gaps_guide[i][aux + k] = 1
-
-                                if core_map[auxrow - 1][j + 1] != 0:
-                                    tot_gaps_guide[i][aux + nrep1] = -1
-                                    aux += nrep1 + 1
-                                else:
-                                    aux += nrep1
-
-                    else:
-                        if core_map[auxrow - 1][j] != 0:
-                            if core_map[auxrow][j] != 0:
-                                for k in range(0, nrep):
-                                    if k == nrep - 1:
-                                        tot_gaps_guide[i][aux + k] = -1
-                                    else:
-                                        if k + 1 % 2 == 1:
-                                            tot_gaps_guide[i][aux + k] = 1
-                                        else:
-                                            tot_gaps_guide[i][aux + k] = -1
-
-                                aux += nrep
-
-                            else:
-                                for k in range(0, nrep1):
-                                    tot_gaps_guide[i][aux + k] = 1
-
-                                aux += nrep1
-
-        else:
-            for j in range(0, fa_numcol):
-                if core_map[auxrow - 1][j] != 0:
-                    if j != fa_numcol - 1:
-                        for k in range(0, nrep1):
-                            tot_gaps_guide[i][aux + k] = 1
-
-                        if core_map[auxrow - 1][j + 1] != 0:
-                            tot_gaps_guide[i][aux + nrep1] = 1
-                            aux += nrep1 + 1
-
-                        else:
-                            aux += nrep1
-
-                    else:
-                        for k in range(0, nrep1):
-                            tot_gaps_guide[i][aux + k] = 1
-
-    for i in range(0, newngaps_tot):
-        if i + 1 <= acum_gaps_per_row[0]:
-            auxrow = 1
-            numinrow = i + 1
-        else:
-            for j in range(1, totrodsrow_n):
-                if (i + 1 > acum_gaps_per_row[j - 1]) and (i + 1 <= acum_gaps_per_row[j]):
-                    auxrow = j + 1
-                    numinrow = i + 1 - acum_gaps_per_row[j - 1]
-
-        auxrow_in_core_map = (auxrow - 1) // newchn_side + 1
-        # if auxrow == totrodsrow_n - 1:
-        #     tot_gap_dirs.append('x')
-    core_cent
-
 
     nono = int(lines[findheaderinline(lines, "NCHN NONO")+1].split()[2])
     new_msim = nono*newchn_tot
@@ -893,6 +631,173 @@ def main():
         for j in range(0, totrodscol_n):
             newrodsmap[i][j] = int(line_aux[j // newchn_side])
 
+    # gets the radial power map from Card 11.8
+
+    rad_pow_map = np.zeros((fa_num, nrods_side, nrods_side), dtype=np.float64)
+    new_rad_pow_map = np.zeros((fa_num, newchn_side, newchn_side), dtype=np.float64)
+    acum_nrods_inrow = np.zeros(totrodsrow_o, dtype=int)
+    aux1 = int(0)
+    for i in range(0, totrodsrow_o):
+        aux = i // nrods_side
+        for j in range(0, fa_numcol):
+            if core_map[aux][j] != 0:
+                aux1 += nrods_side
+
+        acum_nrods_inrow[i] = aux1
+
+    if nrods_tot % 8 == 0:
+        aux = nrods_tot // 8
+    else:
+        aux = nrods_tot // 8 + 1
+
+    aux1 = int(0)
+    aux2 = int(0)
+    aux3 = int(0)
+    cont = int(0)
+    auxrodrow = int(0)
+    for i in range(0, aux):
+        linaux = lines[findheaderinline(lines, "FQR1  FQR2") + 1 + i].split()
+        if i != aux - 1:
+            for j in range(0, 8):
+                aux1 = i * 8 + j + 1
+
+                if aux1 <= acum_nrods_inrow[0]:
+                        auxrodrow = 0
+                else:
+                    for k in range(1, totrodsrow_o):
+                        if aux1 > acum_nrods_inrow[k - 1] and aux1 <= acum_nrods_inrow[k]:
+                            auxrodrow = k
+                            aux1 -= acum_nrods_inrow[k - 1]
+
+                auxfarow = auxrodrow // nrods_side
+                aux2 = auxrodrow % nrods_side
+                auxfacol = (aux1 - 1) // nrods_side + 1
+                aux1 = (aux1 - 1) % nrods_side
+                for l in range(0, fa_numcol):
+                    if core_map[auxfarow][l] != 0:
+                        cont += 1
+                        if cont == auxfacol:
+                            aux3 = numb_core_map[auxfarow][l]
+
+                rad_pow_map[aux3 - 1][aux2][aux1] = np.float64(linaux[j])
+                cont = 0
+
+        else:
+            if nrods_tot % 8 != 0:
+                aux4 = nrods_tot % 8
+            else:
+                aux4 = 8
+            for j in range(0, aux4):
+                aux1 = i * 8 + j + 1
+                if aux1 <= acum_nrods_inrow[0]:
+                    auxrodrow = 0
+                else:
+                    for k in range(0, totrodsrow_o):
+                        if aux1 > acum_nrods_inrow[k - 1] and aux1 <= acum_nrods_inrow[k]:
+                            auxrodrow = k
+                            aux1 -= acum_nrods_inrow[k - 1]
+
+                auxfarow = auxrodrow // nrods_side
+                aux2 = auxrodrow % nrods_side
+                auxfaincol = (aux1 - 1) // nrods_side + 1
+                aux1 = (aux1 - 1) % nrods_side
+                for l in range(0, fa_numcol):
+                    if core_map[auxfarow][l] != 0:
+                        cont += 1
+                        if cont == auxfaincol:
+                            aux3 = numb_core_map[auxfarow][l]
+
+                rad_pow_map[aux3 - 1][aux2][aux1] = np.float64(linaux[j])
+                cont = 0
+
+    if indicradprof != 0:
+        file_extra_fa = open("ExtraFA.inp", "r")
+        l_extra_fa = file_extra_fa.readlines()
+        file_extra_fa.close()
+        coreradprof = np.zeros(fa_num, dtype=float)
+        for i in range(0, fa_numrow):
+            linaux = l_extra_fa[findheaderinline(l_extra_fa, "Core radial power map") + 1 + i].split()
+            for j in range(0, fa_numcol):
+                if numb_core_map[i][j] != 0:
+                    coreradprof[numb_core_map[i][j] - 1] = float(linaux[j])
+
+        for j in range(0, fa_num):
+            for k in range(0, nrods_side):
+                for l in range(0, nrods_side):
+                    linaux = l_extra_fa[findheaderinline(l_extra_fa, "FAPP Nº", time=1+j) + 1 + k].split()
+                    rad_pow_map[j][k][l] = float(linaux[l]) * coreradprof[j][k][l]
+
+    auxsubch = np.zeros(2, dtype=int)
+    auxrod = np.zeros(2, dtype=int)
+    for n in range(0, fa_num):
+        for i in range(0, newchn_side):
+            for j in range(0, newchn_side):
+                for k in range(0, dlev):
+                    for r in range(0, dlev):    #TODO why is it 2!!!!!
+                        auxsubch = [subchannels_in_channel[i][j][k][r][0], subchannels_in_channel[i][j][k][r][1]]
+                        for p in range(0, 2):
+                            for q in range(0, 2):
+                                auxrod[0] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][p][q][0]
+                                if auxrod[0] != -1:
+                                    auxrod[1] = rods_for_subchannel[auxsubch[0]][auxsubch[1]][p][q][1]
+                                    new_rad_pow_map[n][i][j] += 0.25*rad_pow_map[n][auxrod[0]][auxrod[1]]
+
+    # normalizes the radial profile
+
+    new_rad_pow_map = np.true_divide(new_rad_pow_map, sum(sum(sum(new_rad_pow_map)))) * float(newchn_tot)
+    rmults = np.zeros((newchn_side, newchn_side), dtype=float)
+    for i in range(0, newchn_side):
+        for j in range(0, newchn_side):
+            if i != 0:
+                if i != newchn_side-1:
+                    if j != 0:
+                        if j != newchn_side - 1:
+                            rmults[i][j] = dlev**2
+
+                        else:
+                            rmults[i][j] = -0.5 * dlev + dlev**2
+
+                    else:
+                        rmults[i][j] = -0.5 * dlev + dlev ** 2
+
+                else:
+                    if j != 0:
+                        if j != newchn_side - 1:
+                            rmults[i][j] = -0.5 * dlev + dlev ** 2
+
+                        else:
+                            rmults[i][j] = 0.25 - dlev + dlev ** 2
+
+                    else:
+                        rmults[i][j] = 0.25 - dlev + dlev ** 2
+
+            else:
+                if j != 0:
+                    if j != newchn_side - 1:
+                        rmults[i][j] = -0.5 * dlev + dlev ** 2
+
+                    else:
+                        rmults[i][j] = 0.25 - dlev + dlev ** 2
+
+                else:
+                    rmults[i][j] = 0.25 - dlev + dlev ** 2
+
+    # gets the old number of channels from Card 2.1
+
+    oldnchn = int(lines[findheaderinline(lines, "NCH NDM2") + 1].split()[0])
+
+    # Numerates the channels as a function of their coordinates
+
+    cont = int(0)
+    new_chn_guide = np.zeros((totrodsrow_n, totrodscol_n), dtype=int)
+    for i in range(0, totrodsrow_n):
+        for j in range(0, totrodscol_n):
+            auxfarow = i // newchn_side
+            auxfacol = j // newchn_side
+            if core_map[auxfarow][auxfacol] != 0:
+                cont += 1
+                new_chn_guide[i][j] = cont
+
     # ------------------------WRITING--------------------------------------------------- #
 
     # Substitutes the number of channels in Group 2
@@ -904,21 +809,7 @@ def main():
 
     # Deletes the excess of lines in Card 2.2
 
-    removeexcesslines(lines, findheaderinline(lines, "I AN PW", time=1), nchn, newchn_tot)
-
-    # Edits Card 2.2 lines
-
-    for i in range(0, newchn_tot):
-        line_aux = lines[findheaderinline(lines, "I AN PW", time=1) + 1 + i].split()
-        line_aux[0] = str(i + 1)
-        line_aux[1] = format_e(card2_an[i])
-        line_aux[2] = format_e(card2_pw[i])
-        line_aux[6] = format_e(card2_X[i])
-        line_aux[7] = format_e(card2_Y[i])
-        line_aux[8] = format_e(card2_XSIZ[i])
-        line_aux[9] = format_e(card2_YSIZ[i])
-        line_aux = '     ' + '   '.join(line_aux) + '\n'
-        lines[findheaderinline(lines, "I AN PW", time=1) + 1 + i] = line_aux
+    removeexcesslines(lines, findheaderinline(lines, "I AN PW", time=1), oldnchn, newchn_tot)
 
     # Changes the number of gaps in Card 3.1
 
@@ -1016,12 +907,16 @@ def main():
     line_aux = '     ' + '    '.join(line_aux) + '\n'
     lines[findheaderinline(lines, "NRRD NSRD", time=1) + 1] = line_aux
 
+    # Removes excess of lines in Card 8.3
+
+    removeexcesslines(lines, findheaderinline(lines, "NSCH PIE"), 2 * nrods_tot, 2 * newnrod_tot)
+
     # Changes NRT1 in Card 8.6
 
     line_aux = lines[findheaderinline(lines, "NRT1 NST1", time=1) + 1].split()
     line_aux[1] = str(newnrod_tot)
-    line_aux = '     ' + '    '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
-    lines[findheaderinline(lines, "NRT1 NST1", time=1) + 1] = line_aux  # stores the modified line into its position
+    line_aux = '     ' + '    '.join(line_aux) + '\n'
+    lines[findheaderinline(lines, "NRT1 NST1", time=1) + 1] = line_aux
 
     # Deletes excess of lines in Card 8.7
 
@@ -1032,12 +927,555 @@ def main():
         for i in range(0, 12 - (newnrod_tot % 12)):
             line_aux[-i - 1] = "  "
 
-        line_aux = '     ' + '     '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
+        line_aux = '     ' + '     '.join(line_aux) + '\n'
         lines[findheaderinline(lines, "IRTB1 IRTB2", time=1) + ((newnrod_tot - 1) // 12) + 1] = line_aux
+
+    # Deletes excess lines in Card 8
+
+    auxoldlines = nrods_tot // 8 + 1
+    if auxoldlines % 8 == 0:
+        auxoldlines = nrods_tot // 8
+
+    auxnumlines = newnrod_tot // 8 + 1
+    if newnrod_tot % 8 == 0:
+        auxnumlines = newnrod_tot // 8
+    else:
+        aux = 8 - newnrod_tot % 8
+
+    removeexcesslines(lines, findheaderinline(lines, "FQR1 FQR2", time=1), auxoldlines, auxnumlines)
+    if newnrod_tot % 8 != 0:
+        linaux = lines[findheaderinline(lines, "FQR1 FQR2") + auxnumlines].split()
+        for i in range(0, aux):
+            linaux[-(i + aux)] = " "
+
+        linaux = '   ' + '   '.join(linaux) + '\n'
+        lines[findheaderinline(lines, "FQR1 FQR2") + auxnumlines] = linaux
+
+    # Writes Card 2 and Card 3 data
+
+    contchan = int(0)
+    contgap = int(0)
+    for i in range(0, totrodsrow_n):
+        for j in range(0, totrodscol_n):
+            auxfarow = i // newchn_side
+            auxfacol = j // newchn_side
+            rowinfa = i % newchn_side
+            colinfa = j % newchn_side
+            if core_map[auxfarow][auxfacol] != 0:
+                contchan += 1
+                auxfatype = core_map[auxfarow][auxfacol]
+                auxfanum = numb_core_map[auxfarow][auxfacol]
+                linaux = lines[findheaderinline(lines, "I AN PW") + contchan].split()
+                linaux[0] = str(contchan)
+                linaux[1] = format_e(new_an_pw[auxfatype - 1][rowinfa][colinfa][0])
+                linaux[2] = format_e(new_an_pw[auxfatype - 1][rowinfa][colinfa][1])
+                linaux[6] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
+                linaux[7] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
+                linaux[8] = format_e(new_sizes[colinfa])
+                linaux[9] = format_e(new_sizes[rowinfa])
+                linaux = '   ' + '   '.join(linaux) + '\n'
+
+                lines[findheaderinline(lines, "I AN PW") + contchan] = linaux
+
+                linaux = lines[findheaderinline(lines, " N   IFTY   IAXP") + 3 + 2 * (contchan - 1)].split()
+                linaux2 = lines[findheaderinline(lines, " N   IFTY   IAXP") + 2 + 2 * contchan].split()
+                linaux[0] = str(contchan)
+
+                linaux[5] = str(rmults[rowinfa][colinfa])
+                linaux[6] = format_e(gapcond[auxfatype - 1])
+                linaux2[0] = line_aux[0]
+                linaux2[1] = '1.000'
+                linaux2[2] = '0'
+                linaux2[3] = '0.000'
+                linaux2[4] = '0'
+                linaux2[5] = '0.000'
+                linaux2[6] = '0'
+                linaux2[7] = '0.000'
+                linaux2[8] = '0'
+                linaux2[9] = '0.000'
+                linaux2[10] = '0'
+                linaux2[11] = '0.000'
+                linaux2[12] = '0'
+                linaux2[13] = '0.000'
+                linaux2[14] = '0'
+                linaux2[15] = '0.000'
+
+                linaux = '     ' + '   '.join(linaux) + '\n'
+                linaux2 = '     ' + '   '.join(linaux2) + '\n'
+
+                lines[findheaderinline(lines, " N   IFTY   IAXP") + 3 + 2 * (contchan - 1)] = linaux
+                lines[findheaderinline(lines, " N   IFTY   IAXP") + 2 + 2 * contchan] = linaux2
+
+                auxlin = (contchan - 1) // 8 + 1
+                auxcol = (contchan - 1) % 8
+                linaux3 = lines[findheaderinline(lines, "FQR1 FQR2") + auxlin].split()
+                linaux3[auxcol] = str(new_rad_pow_map[auxfanum - 1][rowinfa][colinfa])
+                linaux3 = '   ' + '   '.join(linaux3) + '\n'
+                lines[findheaderinline(lines, "FQR1") + auxlin] = linaux3
+
+                if rowinfa != newchn_side - 1:
+                    if colinfa != newchn_side - 1:
+                        contgap += 1
+                        linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                        linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                        linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                        linaux[0] = str(contgap)
+                        linaux[1] = str(contchan)
+                        linaux[2] = str(new_chn_guide[i][j + 1])
+                        linaux[3] = format_e(new_gapsX_gap[auxfatype - 1][rowinfa][colinfa])
+                        linaux[4] = format_e(new_coordsX[colinfa + 1] - new_coordsX[colinfa])
+
+                        linaux2[0] = str(dlev)
+
+                        linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                        linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
+                        linaux3[3] = 'x'
+
+                        linaux = '   ' + '   '.join(linaux) + '\n'
+                        linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                        linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                        lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                        lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                        lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                        contgap += 1
+                        linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                        linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                        linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                        linaux[0] = str(contgap)
+                        linaux[1] = str(contchan)
+                        linaux[2] = str(new_chn_guide[i + 1][j])
+                        linaux[3] = format_e(new_gapsY_gap[auxfatype - 1][rowinfa][colinfa])
+                        linaux[4] = format_e(new_coordsY[rowinfa] - new_coordsY[rowinfa + 1])
+                        linaux2[0] = str(dlev)
+
+                        linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
+                        linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                        linaux3[3] = 'y'
+
+                        linaux = '   ' + '   '.join(linaux) + '\n'
+                        linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                        linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                        lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                        lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                        lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                    else:
+                        if auxfacol != fa_numcol - 1:
+                            if core_map[auxfarow][auxfacol + 1] != 0:
+                                # 2
+                                contgap += 1
+                                linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                linaux[0] = str(contgap)
+                                linaux[1] = str(contchan)
+                                linaux[2] = str(new_chn_guide[i][j + 1])
+                                linaux[3] = format_e(new_sizes[colinfa])
+                                linaux[4] = format_e(new_sizes[0])
+
+                                linaux2[0] = str(dlev)
+
+                                linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
+                                linaux3[3] = 'x'
+
+                                linaux = '   ' + '   '.join(linaux) + '\n'
+                                linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                                contgap += 1
+                                linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                linaux[0] = str(contgap)
+                                linaux[1] = str(contchan)
+                                linaux[2] = str(new_chn_guide[i + 1][j])
+                                linaux[3] = format_e(new_gapsY_gap[auxfatype - 1][rowinfa][colinfa])
+                                linaux[4] = format_e(new_coordsY[rowinfa] - new_coordsY[rowinfa + 1])
+                                linaux2[0] = str(dlev)
+
+                                linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
+                                linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                                linaux3[3] = 'y'
+
+                                linaux = '   ' + '   '.join(linaux) + '\n'
+                                linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                            else:
+                                # 3
+                                contgap += 1
+                                linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                linaux[0] = str(contgap)
+                                linaux[1] = str(contchan)
+                                linaux[2] = str(new_chn_guide[i + 1][j])
+                                linaux[3] = format_e(new_gapsY_gap[auxfatype - 1][rowinfa][colinfa])
+                                linaux[4] = format_e(new_coordsY[rowinfa] - new_coordsY[rowinfa + 1])
+                                linaux2[0] = str(dlev)
+
+                                linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
+                                linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                                linaux3[3] = 'y'
+
+                                linaux = '   ' + '   '.join(linaux) + '\n'
+                                linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                        else:
+                            # 4
+                            contgap += 1
+                            linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                            linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                            linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                            linaux[0] = str(contgap)
+                            linaux[1] = str(contchan)
+                            linaux[2] = str(new_chn_guide[i + 1][j])
+                            linaux[3] = format_e(new_gapsY_gap[auxfatype - 1][rowinfa][colinfa])
+                            linaux[4] = format_e(new_coordsY[rowinfa] - new_coordsY[rowinfa + 1])
+                            linaux2[0] = str(dlev)
+
+                            linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
+                            linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                            linaux3[3] = 'y'
+
+                            linaux = '   ' + '   '.join(linaux) + '\n'
+                            linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                            linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                            lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                            lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                            lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+
+                else:
+                    if colinfa != newchn_side - 1:
+                        if auxfarow != fa_numrow - 1:
+                            if core_map[auxfarow + 1][auxfacol] != 0:
+                                # 5
+                                contgap += 1
+                                linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                linaux[0] = str(contgap)
+                                linaux[1] = str(contchan)
+                                linaux[2] = str(new_chn_guide[i][j + 1])
+                                linaux[3] = format_e(new_gapsX_gap[auxfatype - 1][rowinfa][colinfa])
+                                linaux[4] = format_e(new_coordsX[colinfa + 1] - new_coordsX[colinfa])
+
+                                linaux2[0] = str(dlev)
+
+                                linaux3[1] = format_e(
+                                    new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
+                                linaux3[3] = 'x'
+
+                                linaux = '   ' + '   '.join(linaux) + '\n'
+                                linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                                contgap += 1
+                                linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                linaux[0] = str(contgap)
+                                linaux[1] = str(contchan)
+                                linaux[2] = str(new_chn_guide[i + 1][j])
+                                linaux[3] = format_e(new_sizes[colinfa])
+                                linaux[4] = format_e(new_sizes[0])
+
+                                linaux2[0] = str(dlev)
+
+                                linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
+                                linaux3[2] = format_e(
+                                    new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                                linaux3[3] = 'y'
+
+                                linaux = '   ' + '   '.join(linaux) + '\n'
+                                linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                            else:
+                                # 6
+                                contgap += 1
+                                linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                linaux[0] = str(contgap)
+                                linaux[1] = str(contchan)
+                                linaux[2] = str(new_chn_guide[i][j + 1])
+                                linaux[3] = format_e(new_gapsX_gap[auxfatype - 1][rowinfa][colinfa])
+                                linaux[4] = format_e(new_coordsX[colinfa + 1] - new_coordsX[colinfa])
+
+                                linaux2[0] = str(dlev)
+
+                                linaux3[1] = format_e(
+                                    new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
+                                linaux3[3] = 'x'
+
+                                linaux = '   ' + '   '.join(linaux) + '\n'
+                                linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                        else:
+                            # 7
+                            contgap += 1
+                            linaux = lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                            linaux2 = lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                            linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                            linaux[0] = str(contgap)
+                            linaux[1] = str(contchan)
+                            linaux[2] = str(new_chn_guide[i][j + 1])
+                            linaux[3] = format_e(new_gapsX_gap[auxfatype - 1][rowinfa][colinfa])
+                            linaux[4] = format_e(new_coordsX[colinfa + 1] - new_coordsX[colinfa])
+
+                            linaux2[0] = str(dlev)
+
+                            linaux3[1] = format_e(
+                                new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                            linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
+                            linaux3[3] = 'x'
+
+                            linaux = '   ' + '   '.join(linaux) + '\n'
+                            linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                            linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                            lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                            lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                            lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                    else:
+                        if auxfarow != fa_numrow - 1:
+                            if auxfacol != fa_numcol - 1:
+                                if core_map[auxfarow][auxfacol + 1] != 0:
+                                    if core_map[auxfarow + 1][auxfacol] != 0:
+                                        # 8
+                                        contgap += 1
+                                        linaux = lines[
+                                            findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                        linaux2 = lines[
+                                            findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                        linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                        linaux[0] = str(contgap)
+                                        linaux[1] = str(contchan)
+                                        linaux[2] = str(new_chn_guide[i][j + 1])
+                                        linaux[3] = format_e(new_sizes[colinfa])
+                                        linaux[4] = format_e(new_sizes[0])
+
+                                        linaux2[0] = str(dlev)
+
+                                        linaux3[1] = format_e(
+                                            new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                        linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
+                                        linaux3[3] = 'x'
+
+                                        linaux = '   ' + '   '.join(linaux) + '\n'
+                                        linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                        linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                        lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                        lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                        lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                                        contgap += 1
+
+                                        linaux = lines[
+                                            findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                        linaux2 = lines[
+                                            findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                        linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                        linaux[0] = str(contgap)
+                                        linaux[1] = str(contchan)
+                                        linaux[2] = str(new_chn_guide[i + 1][j])
+                                        linaux[3] = format_e(new_sizes[colinfa])
+                                        linaux[4] = format_e(new_sizes[0])
+
+                                        linaux2[0] = str(dlev)
+
+                                        linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
+                                        linaux3[2] = format_e(
+                                            new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                                        linaux3[3] = 'y'
+
+                                        linaux = '   ' + '   '.join(linaux) + '\n'
+                                        linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                        linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                        lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                        lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                        lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                                    else:
+                                        # 9
+                                        contgap += 1
+                                        linaux = lines[
+                                            findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                        linaux2 = lines[
+                                            findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                        linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                        linaux[0] = str(contgap)
+                                        linaux[1] = str(contchan)
+                                        linaux[2] = str(new_chn_guide[i][j + 1])
+                                        linaux[3] = format_e(new_sizes[colinfa])
+                                        linaux[4] = format_e(new_sizes[0])
+
+                                        linaux2[0] = str(dlev)
+
+                                        linaux3[1] = format_e(
+                                            new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                        linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
+                                        linaux3[3] = 'x'
+
+                                        linaux = '   ' + '   '.join(linaux) + '\n'
+                                        linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                        linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                        lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                        lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                        lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                                else:
+                                    if core_map[auxfarow + 1][auxfacol] != 0:
+                                        # 10
+                                        contgap += 1
+
+                                        linaux = lines[
+                                            findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                        linaux2 = lines[
+                                            findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                        linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                        linaux[0] = str(contgap)
+                                        linaux[1] = str(contchan)
+                                        linaux[2] = str(new_chn_guide[i + 1][j])
+                                        linaux[3] = format_e(new_sizes[colinfa])
+                                        linaux[4] = format_e(new_sizes[0])
+
+                                        linaux2[0] = str(dlev)
+
+                                        linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
+                                        linaux3[2] = format_e(
+                                            new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                                        linaux3[3] = 'y'
+
+                                        linaux = '   ' + '   '.join(linaux) + '\n'
+                                        linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                        linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                        lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                        lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                        lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                            else:
+                                if core_map[auxfarow + 1][auxfacol] != 0:
+                                    # 11
+                                    contgap += 1
+
+                                    linaux = lines[
+                                        findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                    linaux2 = lines[
+                                        findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                    linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                    linaux[0] = str(contgap)
+                                    linaux[1] = str(contchan)
+                                    linaux[2] = str(new_chn_guide[i + 1][j])
+                                    linaux[3] = format_e(new_sizes[colinfa])
+                                    linaux[4] = format_e(new_sizes[0])
+
+                                    linaux2[0] = str(dlev)
+
+                                    linaux3[1] = format_e(new_coordsX[colinfa] + core_centX[auxfacol])
+                                    linaux3[2] = format_e(
+                                        new_coordsY[rowinfa] + core_centY[auxfarow] - new_sizes[rowinfa] / 2)
+                                    linaux3[3] = 'y'
+
+                                    linaux = '   ' + '   '.join(linaux) + '\n'
+                                    linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                    linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                    lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                    lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                    lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+                        else:
+                            if auxfacol != fa_numcol - 1:
+                                if core_map[auxfarow][auxfacol + 1] != 0:
+                                    contgap += 1
+                                    linaux = lines[
+                                        findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)].split()
+                                    linaux2 = lines[
+                                        findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)].split()
+                                    linaux3 = lines[findheaderinline(lines, "K X  Y  NORM ") + contgap].split()
+
+                                    linaux[0] = str(contgap)
+                                    linaux[1] = str(contchan)
+                                    linaux[2] = str(new_chn_guide[i][j + 1])
+                                    linaux[3] = format_e(new_sizes[colinfa])
+                                    linaux[4] = format_e(new_sizes[0])
+
+                                    linaux2[0] = str(dlev)
+
+                                    linaux3[1] = format_e(
+                                        new_coordsX[colinfa] + core_centX[auxfacol] + new_sizes[colinfa] / 2)
+                                    linaux3[2] = format_e(new_coordsY[rowinfa] + core_centY[auxfarow])
+                                    linaux3[3] = 'x'
+
+                                    linaux = '   ' + '   '.join(linaux) + '\n'
+                                    linaux2 = '   ' + '   '.join(linaux2) + '\n'
+                                    linaux3 = '   ' + '   '.join(linaux3) + '\n'
+
+                                    lines[findheaderinline(lines, "K IK  JK") + 3 + 2 * (contgap - 1)] = linaux
+                                    lines[findheaderinline(lines, "K IK  JK") + 4 + 2 * (contgap - 1)] = linaux2
+                                    lines[findheaderinline(lines, "K X  Y  NORM ") + contgap] = linaux3
+
+    # TODO the process of making the gaps may be simplified with a switch - case structure
 
     # Deletes Card 9.6 and 9.7
 
-    if ngt > 0:
+    if not np.all(ngt == 0):
         start = findheaderinline(lines, "Card 9.6")-1
         n_oldlines = findnextto(lines, "Card 9.6", "********") - start - 1
         removeexcesslines(lines, start, n_oldlines, 0)
@@ -1061,7 +1499,7 @@ def main():
     # Deletes second axial profile (repeated Cards 11.3 and 11.4, that is included when there exist guide tubes.
     # In future versions this could be linked to the number of axial profiles left.
 
-    if ngt > 0:
+    if ngt[0] > 0:
         deletebetweencards(lines, "Card 11.3", "Card 11.7", 2)
 
     # Changes number of boundary conditions in Card 13.1
@@ -1120,6 +1558,7 @@ def main():
 
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
+    # TODO merge the procedure of obtaining a variable from a document (line_aux etc) in a function
 
 
 main()
