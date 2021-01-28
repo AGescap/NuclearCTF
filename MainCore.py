@@ -319,7 +319,7 @@ def main():
         core_centX[i] = ((i + 1) - 0.5 - float(fa_numcol) / 2) * bp
 
     for i in range(0, fa_numrow):
-        core_centY[i] = ((i + 1) - 0.5 - float(fa_numcol) / 2) * bp
+        core_centY[i] = ((i + 1) - 0.5 - float(fa_numrow) / 2) * bp
 
     core_centY = -1 * core_centY
     # TODO try with non-square core arrays
