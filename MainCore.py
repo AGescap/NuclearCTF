@@ -8,11 +8,11 @@ The input of this script will be a Core input file -i.e. more than one Fuel Asse
 have been merged into larger ones. This code is not much pythonic, but that makes it easier to be read by a Matlab user. Many of the instructions assume
 that there are no empty lines in the begginning of a Card, whereas most of them are ok with blank lines at the end of a Card.
 
-(*)It is likely that the script will not work for core arrays with one row of fuel assemblies. Is this is proven, a special
+(*)It is likely that the script will not work for core arrays with one row of fuel assemblies. If this is proven, a special
    case could be created, given that many processes in the new gaps building would simplify considerably
  
 Author: Álvaro González Escapa
-Institution: Polytechnic University of Madrid
+Institution: Technical University of Madrid
 Python version: 3.8 
 
 
@@ -375,7 +375,6 @@ def main():
         od_s[0][1] = gt_od[0]
 
     od_rods = np.ones((fa_types, nrods_side, nrods_side), dtype=float)
-
 
     for i in range(0, fa_types):
         od_s[i][0] = fr_od[i]
