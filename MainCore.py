@@ -131,7 +131,7 @@ def format_e(n):    # This function allows to write a float as a string with sci
 
 def ret_FA(numcols, numfa):
     '''
-    This function returns the position
+    This function returns the position of an FA in the core [x, y] given the number of FAs per column and the number of the FA in particular (starting from one)
     '''
     a = [int((numfa - 1) // numcols + 1), int(numfa - numcols*(((numfa - 1) // numcols + 1)-1))]
     return a
