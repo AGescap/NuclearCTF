@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import math
+import re
 
 def findheaderinline(doc, string, time=1, separator=" "):
     cont = 0
@@ -26,6 +27,9 @@ def findnextto(doc, string1, string2, time1=1, time2=1):
 
     finish = findheaderinline(aux_doc, string2, time=time2) + start
     return finish
+
+def fahrtocelsius(t):
+    return (t-32.0) * 5/9
     
 
 def main():
@@ -36,7 +40,8 @@ def main():
     
     In channels.out, for the Bundle average properties Table A, the following positions correspond to:
 
-    *0: Number of axial node, starting from the bottom. Bottom node is 1, not 0
+    *0: Number of axial node. Numeration starts from the bottom, but the document starts from the top
+        Bottom node is 1, not 0
     *1: Axial position end of node, in m
     *2: Flow regime, isij
     *3: Liquid volume fraction, aliq
@@ -70,7 +75,8 @@ def main():
 
     In channels.out, for the Table nº1 of a channel, the following positions correspond to:
     
-    *0: Number of axial node, starting from the bottom. Bottom node is 1, not 0
+    *0: Number of axial node. Numeration starts from the bottom, but the document starts from the top
+        Bottom node is 1, not 0
     *1: Axial position end of node, in m
     *2: Flow regime, isij
     *3: Liquid volume fraction, aliq 
@@ -88,7 +94,8 @@ def main():
 
     In channels.out, for the Table nº2 of a channel, the following positions correspond to:
 
-    *0: Number of axial node, starting from the bottom. Bottom node is 1, not 0
+    *0: Number of axial node. Numeration starts from the bottom, but the document starts from the top
+        Bottom node is 1, not 0
     *1: Axial position end of node, [m]
     *2: Flow regime, isij
     *3: Pressure, p [bar]
@@ -107,7 +114,8 @@ def main():
 
     In channels.out, for the Table nº3 of a channel, the following positions correspond to:
 
-    *0: Number of axial node, starting from the bottom. Bottom node is 1, not 0
+    *0: Number of axial node. Numeration starts from the bottom, but the document starts from the top
+        Bottom node is 1, not 0
     *1: Axial position end of node, [m]
     *2: Flow regime, isij
     *3: Heat transfer regime in the 1st surface, mode1 [str]
@@ -135,7 +143,8 @@ def main():
 
     In channels.out, for the Table nº4 of a channel, the following positions correspond to:
 
-    *0: Number of axial node, starting from the bottom. Bottom node is 1, not 0
+    *0: Number of axial node. Numeration starts from the bottom, but the document starts from the top
+        Bottom node is 1, not 0
     *1: Axial position end of node, [m]
     *2: Flow regime, isij
     *3: Entrained liquid mass per node, sent [kg/s]
@@ -148,12 +157,38 @@ def main():
     *10: Lateral -lost- total mass flow rate per node, wtot_sum [kg/s]
     *11: Film thickness, dliq [mm]
 
-    In the output files,  rod surfaces are numbered as follow:
+    In the output files, rod surfaces are numbered as follow:
     -surface nº1: bottom left
     -surface nº2: bottom right
     -surface nº3: top left
     -surface nº4: top right
 
+    In deck.dnb.out, for every surface of every rod, one has a table with the following fields:
+    *0: Number of axial node. Numeration starts from the bottom, but the document starts from the top
+        Bottom node is 1, not 0
+    *1: Axial position end of node, [in]
+    *2: Heat flux, Q" [BTU/h*ft**2]
+    *3: Critical heat flux, CHF  [BTU/h*ft**2]
+    *4: DNBR
+
+    In deckr.out, for every surface of every rod, one has a table with the following fields:
+    *0: Number of axial node. Numeration starts from the bottom, but the document starts from the top
+        Bottom node is 1, not 0
+    ----Remember to split the star (*) sign between 0th and 1st fields-----
+    *1: Axial position end of node, [in]
+    *2: Liquid temperature [ºF]
+    *3: Vapor temperature [ºF]
+    *4: Surface heat flux [BTU/h*ft**2]
+    *5: Heat transfer mode [str]
+    *6: Outside clad temperature [ºF]
+    *7: Inside clad temperature [ºF]
+    *8: Gap conductance [BTU/h*ft2*ºF]
+    *9: Fuel surface temperature [ºF]
+    *10: Fuel center temperature [ºF]
+
+    cpld_temp_dens_summary.out only contains a summary table, with radial averaging of some magnitudes for
+    every axial node:
+    *0: Number of axial node, starting from the bottom. Bottom node is 1, not 0
 
     '''
 
@@ -165,18 +200,28 @@ def main():
     file = open("deck.dnb.out", "r")
     lines_dnb = file.readlines()
     file.close()
-    
+
+    file = open("deckr.out", "r")
+    lines_deckr = file.readlines()
+    file.close()
+
+    file = open("cpld_temp_dens_summary.out", "r")
+    lines_summary = file.readlines()
+    file.close()
     # conversion factor, inches to mm
-    in_to_m = 0.0254
+    cf1 = 0.0254
+
+    # conversion factor, BTU/h-ft**2 to kW/m2
+    cf2 = 0.003152481054113
     
     # for channels file
-    channels_keys = [
+    channels_keys = []
     # for dnb file:
-    
-    
-    
-    
-    
+
+    # a = 'Beautiful, is; better*than\nugly'
+    # re.split('; |, |\*|\n', a)
+    # ['Beautiful', 'is', 'better', 'than', 'ugly']
+
     # -----------------------------------------------------------------------DATA ANALYSIS----------------------------------------------------------------
     
     
