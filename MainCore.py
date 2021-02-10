@@ -194,7 +194,7 @@ def main():
     nchn_side = nrods_side + 1
     nchn = nchn_side**2
 
-    dlev = 6
+    dlev = 3
     indicradprof = 0
 
     if nchn_side % dlev != 0:
@@ -232,6 +232,8 @@ def main():
     totrodsrow_o = int(linaux[0])
     linaux = lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL") + 1].split()
     totchansrow_o = int(linaux[0])
+    totchansrow_s = fa_numrow * nchn_side
+    totchanscol_s = fa_numcol * nchn_side
 
     fr_id = np.zeros(fa_types, dtype=float)
     fr_id[0] = float(l_assem[findheaderinline(l_assem, "Cladding inner diameter") + 1].split()[0])
@@ -625,10 +627,17 @@ def main():
     # gets a map of the full core from card 17.2
 
     newrodsmap = np.zeros((totrodsrow_n, totrodscol_n), dtype=int)
+    new_chn_guide = np.zeros((totrodsrow_n, totrodscol_n), dtype=int)
+    aux = int(0)
     for i in range(0, totrodsrow_n):
         line_aux = lines[findheaderinline(lines, "Assembly Map") + 1 + (i // newchn_side)].split()
         for j in range(0, totrodscol_n):
+            auxfarow = i // newchn_side
+            auxfacol = j // newchn_side
             newrodsmap[i][j] = int(line_aux[j // newchn_side])
+            if core_map[auxfarow][auxfacol] != 0:
+                aux += 1
+                new_chn_guide[i][j] = aux
 
     # gets the radial power map from Card 11.8
 
@@ -785,19 +794,35 @@ def main():
 
     oldnchn = int(lines[findheaderinline(lines, "NCH NDM2") + 1].split()[0])
 
-    # Numerates the channels as a function of their coordinates
+    # ------------------------------------------------------------------------------- #
+    #                     MAPPING PREVIOUS CHANNELS  INTO NEW ONES                    #
+    # ------------------------------------------------------------------------------- #
 
-    cont = int(0)
-    new_chn_guide = np.zeros((totrodsrow_n, totrodscol_n), dtype=int)
-    for i in range(0, totrodsrow_n):
-        for j in range(0, totrodscol_n):
-            auxfarow = i // newchn_side
-            auxfacol = j // newchn_side
+    # This part of the code would be straightforward should CTF prepro not merge channels in the boundary of FAs
+
+    notjoinchan = fa_num * nchn
+    totsubchn_in_chn = np.zeros(notjoinchan, dtype=int)
+    totsubchn_in_sbchn = np.zeros(notjoinchan, dtype=int)
+
+    aux = int(0)
+    aux2 = int(1)
+    mem = int(-1)
+    mem2 = int(-1)
+    for i in range(0, totchansrow_s):
+        for j in range(0, totchanscol_s):
+            auxfarow = i // nchn_side
+            auxfacol = j // nchn_side
+            auxnewrow = i // dlev
+            auxnewcol = j // dlev
+            rowinfa = i % nchn_side
+            colinfa = j % nchn_side
             if core_map[auxfarow][auxfacol] != 0:
-                cont += 1
-                new_chn_guide[i][j] = cont
+                aux += 1
+                totsubchn_in_chn[aux - 1] = newrodsmap[auxnewrow][auxnewcol]
 
-    # ------------------------WRITING--------------------------------------------------- #
+    # ------------------------------------------------------------------------------- #
+    #                            WRITING                                              #
+    # ------------------------------------------------------------------------------- #
 
     # Substitutes the number of channels in Group 2
 
@@ -951,6 +976,7 @@ def main():
         lines[findheaderinline(lines, "FQR1 FQR2") + auxnumlines] = linaux
 
     # Writes Card 2 and Card 3 data
+
 
     contchan = int(0)
     contgap = int(0)
@@ -1547,14 +1573,13 @@ def main():
         lines[findheaderinline(lines, "Card 17.4 - Rod Map", time=1) + 1+i] = line_aux
         lines[findheaderinline(lines, "Card 17.4 - Channel Map", time=1) + 1 + i] = line_aux
 
-    # TODO remake the new core map
-
     # ---------------------------------------END OF MAIN--------------------------------------------------
 
     file = open('new_deck.inp', 'w')
     file.writelines(lines)
     file.close()
 
+    print(totsubchn_in_chn)
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
     # TODO merge the procedure of obtaining a variable from a document (line_aux etc) in a function
