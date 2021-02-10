@@ -801,13 +801,9 @@ def main():
     # This part of the code would be straightforward should CTF prepro not merge channels in the boundary of FAs
 
     notjoinchan = fa_num * nchn
-    totsubchn_in_chn = np.zeros(notjoinchan, dtype=int)
-    totsubchn_in_sbchn = np.zeros(notjoinchan, dtype=int)
+    totsubchn_in_chn = np.zeros((totchansrow_s, totchanscol_s, 2), dtype=int)
 
     aux = int(0)
-    aux2 = int(1)
-    mem = int(-1)
-    mem2 = int(-1)
     for i in range(0, totchansrow_s):
         for j in range(0, totchanscol_s):
             auxfarow = i // nchn_side
@@ -817,8 +813,85 @@ def main():
             rowinfa = i % nchn_side
             colinfa = j % nchn_side
             if core_map[auxfarow][auxfacol] != 0:
-                aux += 1
-                totsubchn_in_chn[aux - 1] = newrodsmap[auxnewrow][auxnewcol]
+                totsubchn_in_chn[i][j][0] = new_chn_guide[auxnewrow][auxnewcol]
+                if auxfarow != 0:
+                    if auxfacol != 0:
+                        if rowinfa != 0:
+                            if colinfa != 0:
+                                aux += 1
+                                totsubchn_in_chn[i][j][1] = aux
+
+                            else:
+                                if core_map[auxfarow][auxfacol - 1] != 0:
+                                    totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
+
+                                else:
+                                    aux += 1
+                                    totsubchn_in_chn[i][j][1] = aux
+
+                        else:
+                            if colinfa != 0:
+                                if core_map[auxfarow - 1][auxfacol] != 0:
+                                    totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i-1][j][1]
+                                else:
+                                    aux += 1
+                                    totsubchn_in_chn[i][j][1] = aux
+
+                            else:
+                                if core_map[auxfarow - 1][auxfacol - 1] != 0:
+                                    totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i - 1][j-1][1]
+                                else:
+                                    if core_map[auxfarow - 1][auxfacol] != 0:
+                                        totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i - 1][j][1]
+                                    else:
+                                        if core_map[auxfarow][auxfacol - 1] != 0:
+                                            totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
+                                        else:
+                                            aux += 1
+                                            totsubchn_in_chn[i][j][1] = aux
+
+                    else:
+                        if rowinfa != 0:
+                            aux += 1
+                            totsubchn_in_chn[i][j][1] = aux
+
+                        else:
+                            if core_map[auxfarow -1][auxfacol] != 0:
+                                totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i-1][j][1]
+
+                            else:
+                                aux += 1
+                                totsubchn_in_chn[i][j][1] = aux
+
+                else:
+                    if auxfacol != 0:
+                        if colinfa != 0:
+                            aux += 1
+                            totsubchn_in_chn[i][j][1] = aux
+
+                        else:
+                            if core_map[auxfarow][auxfacol - 1] != 0:
+                                totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
+
+                            else:
+                                aux += 1
+                                totsubchn_in_chn[i][j][1] = aux
+
+                    else:
+                        aux += 1
+                        totsubchn_in_chn[i][j][1] = aux
+
+
+
+
+
+
+
+
+
+
+
+
 
     # ------------------------------------------------------------------------------- #
     #                            WRITING                                              #
