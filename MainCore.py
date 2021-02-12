@@ -346,8 +346,22 @@ def main():
     # gets the number of connections between adjacent core maps
 
     fa_connections = int(0)
+    first_fa_left = np.zeros(fa_numrow - 1, dtype=int)
+    aux1 = int(0)
+    cont1 = int(0)
+    cont2 =  int(0)
+    aux2 = int(0)
     for i in range(0, fa_numrow):
         for j in range(0, fa_numcol):
+            if i != fa_numrow - 1:
+                if core_map[i][j] != 0 and cont1 == 0:
+                    aux1 = j
+                    cont1 = 1
+
+                if core_map[i+1][j] !=0 and cont2 == 0:
+                    aux2 = j
+                    cont2 = 1
+
             if core_map[i][j] != 0:
                 if i != fa_numrow - 1:
                     if j != fa_numcol - 1:
@@ -365,6 +379,16 @@ def main():
                         if core_map[i][j+1] != 0:
                             fa_connections += 1
 
+        if i != fa_numrow - 1:
+            if aux1 <= aux2:
+                first_fa_left[i] = 1
+            else:
+                first_fa_left[i] = -1
+
+            cont1 = 0
+            cont2 = 0
+
+    print(first_fa_left)
     gap_betw_fa_tot = fa_connections * newchn_side
     newngaps_tot = gap_betw_fa_tot + fa_num * inner_gaps_in_new_fa
 
@@ -798,7 +822,6 @@ def main():
     # ------------------------------------------------------------------------------- #
     #                     MAPPING PREVIOUS CHANNELS  INTO NEW ONES                    #
     # ------------------------------------------------------------------------------- #
-
     # This part of the code would be straightforward should CTF prepro not merge channels in the boundary of FAs
 
     totsubchn_in_chn = np.zeros((totchansrow_s, totchanscol_s, 2), dtype=int)
@@ -815,113 +838,113 @@ def main():
             if core_map[auxfarow][auxfacol] != 0:
                 totsubchn_in_chn[i][j][0] = new_chn_guide[auxnewrow][auxnewcol]
                 if auxfarow != 0:
-                    if auxfacol != 0:
-                        if rowinfa != 0:
-                            if colinfa != 0:
-                                aux += 1
-                                totsubchn_in_chn[i][j][1] = aux
-
-                            else:
-                                if core_map[auxfarow][auxfacol - 1] != 0:
-                                    totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
-
-                                else:
-                                    aux += 1
-                                    totsubchn_in_chn[i][j][1] = aux
-
-                        else:
-                            if colinfa != 0:
-                                if colinfa != nchn_side - 1:
-                                    if core_map[auxfarow - 1][auxfacol] != 0:
-                                        totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i-1][j][1]
-                                    else:
-                                        aux += 1
-                                        totsubchn_in_chn[i][j][1] = aux
-
-                                else:
-                                    if auxfacol != fa_numcol - 1:
-                                        if core_map[auxfarow - 1][auxfacol] != 0:
-                                            totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i - 1][j][1]
+                    if auxfarow != fa_numrow - 1:
+                        if auxfacol != 0:
+                            if auxfacol != fa_numcol - 1:
+                                if rowinfa != 0:
+                                    if rowinfa != nchn_side - 1:
+                                        if colinfa != 0:
+                                            aux += 1
+                                            totsubchn_in_chn[i][j][1] = aux
 
                                         else:
-                                            if core_map[auxfarow - 1][auxfacol + 1] != 0:
-                                                totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i - 1][j + 1][1]
+                                            if core_map[auxfarow][auxfacol - 1] != 0:
+                                                totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
+                                            else:
+                                                aux += 1
+                                                totsubchn_in_chn[i][j][1] = aux
+
+                                    else:
+                                        if colinfa != 0:
+                                            if first_fa_left[auxfarow] == 1:
+                                                aux += 1
+                                                totsubchn_in_chn[i][j][1] = aux
+
+                                        else:
+                                            if first_fa_left[auxfarow] == 1:
+                                                if core_map[auxfarow][auxfacol-1] != 0:
+                                                    totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
+                                                else:
+                                                    aux += 1
+                                                    totsubchn_in_chn[i][j][1] = aux
+
+                                else:
+                                    if colinfa != 0:
+                                        if colinfa != newchn_side - 1:
+                                            if first_fa_left[auxfarow - 1] == 1:
+                                                totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i-1][j][1]
+                                            else:
+                                                aux += 1
+                                                totsubchn_in_chn[i][j][1] = aux
+                                                if core_map[auxfarow - 1][auxfacol] != 0:
+                                                    totsubchn_in_chn[i-1][j][1] = aux
+
+                                        else:
+                                            if first_fa_left[auxfarow - 1] == 1:
+                                                totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i - 1][j][1]
+
+                                            else:
+                                                aux += 1
+                                                totsubchn_in_chn[i][j][1] = aux
+                                                if core_map[auxfarow - 1][auxfacol] != 0:
+                                                    totsubchn_in_chn[i-1][j][1] = aux
+                                                if core_map[auxfarow - 1][auxfacol+1] != 0:
+                                                    totsubchn_in_chn[i - 1][j+1][1] = aux
+
+                                    else:
+                                        if first_fa_left[auxfarow - 1] == 1:
+                                            totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i - 1][j-1][1]
+
+                                        else:
+                                            if core_map[auxfarow][auxfacol - 1] != 0:
+                                                totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
+
+                                            else:
+                                                aux += 1
+                                                totsubchn_in_chn[i][j][1] = aux
+
+                            else:
+                                if rowinfa != 0:
+                                    if rowinfa != nchn_side - 1:
+                                        if colinfa != 0:
+                                            aux += 1
+                                            totsubchn_in_chn[i][j][1] = aux
+
+                                        else:
+                                            if core_map[auxfarow][auxfacol-1] != 0:
+                                                totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
 
                                             else:
                                                 aux += 1
                                                 totsubchn_in_chn[i][j][1] = aux
 
                                     else:
-                                        if core_map[auxfarow - 1][auxfacol] != 0:
-                                            totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i - 1][j][1]
+                                        if colinfa != 0:
+                                            if first_fa_left[auxfarow] == 1:
+                                                aux += 1
+                                                totsubchn_in_chn[i][j][1] = aux
 
                                         else:
-                                            aux += 1
-                                            totsubchn_in_chn[i][j][1] = aux
-
-                            else:
-                                if core_map[auxfarow - 1][auxfacol - 1] != 0:
-                                    totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i - 1][j-1][1]
-                                else:
-                                    if core_map[auxfarow - 1][auxfacol] != 0:
-                                        totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i - 1][j][1]
-                                    else:
-                                        if core_map[auxfarow][auxfacol - 1] != 0:
-                                            totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
-                                        else:
-                                            aux += 1
-                                            totsubchn_in_chn[i][j][1] = aux
-
-                    else:
-                        if rowinfa != 0:
-                            aux += 1
-                            totsubchn_in_chn[i][j][1] = aux
-
-                        else:
-                            if colinfa != nchn_side - 1:
-                                if core_map[auxfarow - 1][auxfacol] != 0:
-                                    totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i-1][j][1]
-
-                                else:
-                                    aux += 1
-                                    totsubchn_in_chn[i][j][1] = aux
-                            else:
-                                if auxfacol != fa_numcol - 1:
-                                    if core_map[auxfarow - 1][auxfacol] != 0:
-                                        totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i - 1][j][1]
-                                    else:
-                                        if core_map[auxfarow - 1][auxfacol + 1] != 0:
-                                            totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i - 1][j + 1][1]
-                                        else:
-                                            aux += 1
-                                            totsubchn_in_chn[i][j][1] = aux
+                                            if first_fa_left[auxfarow] == 1:
+                                                if core_map[auxfarow][auxfacol - 1] != 0:
+                                                    totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
+                                                else:
+                                                    aux += 1
+                                                    totsubchn_in_chn[i][j][1] = aux
 
 
-                                else:
-                                    if core_map[auxfarow - 1][auxfacol] != 0:
-                                        totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i - 1][j][1]
 
-                                    else:
-                                        aux += 1
-                                        totsubchn_in_chn[i][j][1] = aux
 
-                else:
-                    if auxfacol != 0:
-                        if colinfa != 0:
-                            aux += 1
-                            totsubchn_in_chn[i][j][1] = aux
 
-                        else:
-                            if core_map[auxfarow][auxfacol - 1] != 0:
-                                totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
 
-                            else:
-                                aux += 1
-                                totsubchn_in_chn[i][j][1] = aux
 
-                    else:
-                        aux += 1
-                        totsubchn_in_chn[i][j][1] = aux
+
+
+
+
+
+
+
 
     # ------------------------------------------------------------------------------- #
     #                            WRITING                                              #

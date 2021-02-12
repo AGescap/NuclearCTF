@@ -208,6 +208,11 @@ def main():
     file = open("cpld_temp_dens_summary.out", "r")
     lines_summary = file.readlines()
     file.close()
+    
+    file = open("Channelsmap.txt", "r")
+    lines_channelsmap = file.readlines()
+    file.close()
+    
     # conversion factor, inches to mm
     cf1 = 0.0254
 
@@ -221,6 +226,16 @@ def main():
     # a = 'Beautiful, is; better*than\nugly'
     # re.split('; |, |\*|\n', a)
     # ['Beautiful', 'is', 'better', 'than', 'ugly']
+    
+    # gets the channel map
+    
+    linaux = lines_channelsmap[findheaderinline(lines_channelsmap, "Nº of lines to read") + 1]
+    chmp_dim = int(linaux[0])
+    
+    channmap = np.zeros((chmp_dim, 3), dtype=int)
+    for i in range(0, chmp_dim):
+        linaux = lines_channelsmap[findheaderinline(lines_channelsmap, "Nº of lines to read") + 3 + i]
+        chmp_dim[i, :] = [int(linaux[0]), int(linaux[1]), int(linaux[2])]
 
     # -----------------------------------------------------------------------DATA ANALYSIS----------------------------------------------------------------
     
