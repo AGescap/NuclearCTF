@@ -130,6 +130,13 @@ def format_e(n):    # This function allows to write a float as a string with sci
         return a.split('E')[0].rstrip('0').rstrip('.') + 'E' + a.split('E')[1]
 
 
+def isit(a, b, prec=1e-4):
+    if abs(a-b) < prec:
+        return True
+    else:
+        return False
+
+
 def ret_FA(numcols, numfa):
     '''
     This function returns the position of an FA in the core [x, y] given the number of FAs per column and the number of the FA in particular (starting from one)
@@ -504,15 +511,20 @@ def main():
     pw = np.zeros((nchn_side, nchn_side), dtype=np.float64)
 
     # gives values to the subchannel data
-
+    old_coordsX = np.zeros(nchn_side, dtype=np.float64)
     new_coordsX = np.zeros(newchn_side, dtype=np.float64)
     new_coordsX[0] = -bp / 2 + (free_sp + (dlev - 1) * pp) / 2
     new_coordsX[-1] = bp / 2 - (free_sp + (dlev - 1) * pp) / 2
-
+    old_coordsX[0] = -bp / 2 + free_sp /2
+    old_coordsX[-1] = bp / 2 - free_sp / 2
     for i in range(1, newchn_side - 1):
         new_coordsX[i] = -bp / 2 + free_sp + (dlev - 1) * pp + dlev * pp / 2 + (i - 1) * dlev * pp
 
+    for i in range(1, nchn_side - 1):
+        old_coordsX[i] = -bp / 2 + free_sp + pp / 2 + pp * (i - 1)
+
     new_coordsY = -1 * new_coordsX
+    old_coordsY = -1 * old_coordsX
 
     # edits nominal area and wet perimeter for the channels
 
@@ -766,7 +778,7 @@ def main():
         for i in range(0, newchn_side):
             for j in range(0, newchn_side):
                 for k in range(0, dlev):
-                    for r in range(0, dlev):    #TODO why is it 2!!!!!
+                    for r in range(0, dlev):
                         auxsubch = [subchannels_in_channel[i][j][k][r][0], subchannels_in_channel[i][j][k][r][1]]
                         for p in range(0, 2):
                             for q in range(0, 2):
@@ -827,6 +839,8 @@ def main():
     totsubchn_in_chn = np.zeros((totchansrow_s, totchanscol_s, 2), dtype=int)
 
     aux = int(0)
+    found = int(0)
+    teorcoord = np.zeros(2, dtype=float)
     for i in range(0, totchansrow_s):
         for j in range(0, totchanscol_s):
             auxfarow = i // nchn_side
@@ -836,116 +850,20 @@ def main():
             rowinfa = i % nchn_side
             colinfa = j % nchn_side
             if core_map[auxfarow][auxfacol] != 0:
+                teorcoord[0] = core_centX[auxfacol] + old_coordsX[colinfa]
+                teorcoord[1] = core_centY[auxfarow] + old_coordsY[rowinfa]
                 totsubchn_in_chn[i][j][0] = new_chn_guide[auxnewrow][auxnewcol]
-                if auxfarow != 0:
-                    if auxfarow != fa_numrow - 1:
-                        if auxfacol != 0:
-                            if auxfacol != fa_numcol - 1:
-                                if rowinfa != 0:
-                                    if rowinfa != nchn_side - 1:
-                                        if colinfa != 0:
-                                            aux += 1
-                                            totsubchn_in_chn[i][j][1] = aux
+                for k in range(0, oldnchn):
+                    linaux = lines[findheaderinline(lines, "I AN PW") + 1 + k].split()
+                    if (isit(teorcoord[0], float(linaux[6])) or isit(
+                            teorcoord[0] - free_sp / 2, float(linaux[6])) or isit(
+                            teorcoord[0] + free_sp / 2, float(linaux[6]))) and (isit(
+                            teorcoord[1], float(linaux[7])) or isit(
+                            teorcoord[1] - free_sp / 2, float(linaux[7])) or isit(
+                            teorcoord[1] + free_sp / 2, float(linaux[7]))):
 
-                                        else:
-                                            if core_map[auxfarow][auxfacol - 1] != 0:
-                                                totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
-                                            else:
-                                                aux += 1
-                                                totsubchn_in_chn[i][j][1] = aux
-
-                                    else:
-                                        if colinfa != 0:
-                                            if first_fa_left[auxfarow] == 1:
-                                                aux += 1
-                                                totsubchn_in_chn[i][j][1] = aux
-
-                                        else:
-                                            if first_fa_left[auxfarow] == 1:
-                                                if core_map[auxfarow][auxfacol-1] != 0:
-                                                    totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
-                                                else:
-                                                    aux += 1
-                                                    totsubchn_in_chn[i][j][1] = aux
-
-                                else:
-                                    if colinfa != 0:
-                                        if colinfa != newchn_side - 1:
-                                            if first_fa_left[auxfarow - 1] == 1:
-                                                totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i-1][j][1]
-                                            else:
-                                                aux += 1
-                                                totsubchn_in_chn[i][j][1] = aux
-                                                if core_map[auxfarow - 1][auxfacol] != 0:
-                                                    totsubchn_in_chn[i-1][j][1] = aux
-
-                                        else:
-                                            if first_fa_left[auxfarow - 1] == 1:
-                                                totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i - 1][j][1]
-
-                                            else:
-                                                aux += 1
-                                                totsubchn_in_chn[i][j][1] = aux
-                                                if core_map[auxfarow - 1][auxfacol] != 0:
-                                                    totsubchn_in_chn[i-1][j][1] = aux
-                                                if core_map[auxfarow - 1][auxfacol+1] != 0:
-                                                    totsubchn_in_chn[i - 1][j+1][1] = aux
-
-                                    else:
-                                        if first_fa_left[auxfarow - 1] == 1:
-                                            totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i - 1][j-1][1]
-
-                                        else:
-                                            if core_map[auxfarow][auxfacol - 1] != 0:
-                                                totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
-
-                                            else:
-                                                aux += 1
-                                                totsubchn_in_chn[i][j][1] = aux
-
-                            else:
-                                if rowinfa != 0:
-                                    if rowinfa != nchn_side - 1:
-                                        if colinfa != 0:
-                                            aux += 1
-                                            totsubchn_in_chn[i][j][1] = aux
-
-                                        else:
-                                            if core_map[auxfarow][auxfacol-1] != 0:
-                                                totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
-
-                                            else:
-                                                aux += 1
-                                                totsubchn_in_chn[i][j][1] = aux
-
-                                    else:
-                                        if colinfa != 0:
-                                            if first_fa_left[auxfarow] == 1:
-                                                aux += 1
-                                                totsubchn_in_chn[i][j][1] = aux
-
-                                        else:
-                                            if first_fa_left[auxfarow] == 1:
-                                                if core_map[auxfarow][auxfacol - 1] != 0:
-                                                    totsubchn_in_chn[i][j][1] = totsubchn_in_chn[i][j-1][1]
-                                                else:
-                                                    aux += 1
-                                                    totsubchn_in_chn[i][j][1] = aux
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                        totsubchn_in_chn[i][j][1] = int(linaux[0])
+                        break
     # ------------------------------------------------------------------------------- #
     #                            WRITING                                              #
     # ------------------------------------------------------------------------------- #
@@ -1735,6 +1653,8 @@ def main():
     file.writelines(chanmaplines)
     file.close()
 
+    print(old_coordsX)
+    print(old_coordsY)
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
     # TODO merge the procedure of obtaining a variable from a document (line_aux etc) in a function
