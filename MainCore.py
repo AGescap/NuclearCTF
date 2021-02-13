@@ -515,7 +515,7 @@ def main():
     new_coordsX = np.zeros(newchn_side, dtype=np.float64)
     new_coordsX[0] = -bp / 2 + (free_sp + (dlev - 1) * pp) / 2
     new_coordsX[-1] = bp / 2 - (free_sp + (dlev - 1) * pp) / 2
-    old_coordsX[0] = -bp / 2 + free_sp /2
+    old_coordsX[0] = -bp / 2 + free_sp / 2
     old_coordsX[-1] = bp / 2 - free_sp / 2
     for i in range(1, newchn_side - 1):
         new_coordsX[i] = -bp / 2 + free_sp + (dlev - 1) * pp + dlev * pp / 2 + (i - 1) * dlev * pp
@@ -864,6 +864,139 @@ def main():
 
                         totsubchn_in_chn[i][j][1] = int(linaux[0])
                         break
+
+    n_units = int(0)
+    units_guide = np.zeros((totchansrow_n, totchanscol_n), dtype=int)
+    for i in range(0, totchanscol_n):
+        for j in range(0, totchanscol_n):
+            auxfarow = i // newchn_side
+            auxfacol = j // newchn_side
+            rowinfa = i % newchn_side
+            colinfa = j % newchn_side
+            if core_map[auxfarow][auxfacol] != 0:
+                if auxfarow != 0:
+                    if auxfacol != 0:
+                        if rowinfa != 0:
+                            if rowinfa != newchn_side - 1:
+                                if colinfa != 0:
+                                    n_units += 1
+                                    units_guide[i][j] = n_units
+                                else:
+                                    if core_map[auxfarow][auxfacol-1] == 0:
+                                        n_units += 1
+                                        units_guide[i][j] = n_units
+
+                                    else:
+                                        units_guide[i][j] = units_guide[i][j-1]
+
+                            else:
+                                if colinfa != 0:
+                                    n_units += 1
+                                    units_guide[i][j] = n_units
+                                else:
+                                    if core_map[auxfarow][auxfacol - 1] == 0:
+                                        n_units += 1
+                                        units_guide[i][j] = n_units
+                                    else:
+                                        units_guide[i][j] = units_guide[i][j - 1]
+
+
+                        else:
+                            if colinfa != 0:
+                                if colinfa != newchn_side - 1:
+                                    if core_map[auxfarow - 1][auxfacol] == 0:
+                                        n_units += 1
+                                        units_guide[i][j] = n_units
+                                    else:
+                                        units_guide[i][j] = units_guide[i-1][j]
+
+                                else:
+                                    if auxfacol != fa_numcol - 1:
+                                        if core_map[auxfarow - 1][auxfacol] == 0 \
+                                                and core_map[auxfarow - 1][auxfacol + 1] == 0:
+                                            n_units += 1
+                                            units_guide[i][j] = n_units
+
+                                        else:
+                                            if core_map[auxfarow - 1][auxfacol] != 0:
+                                                units_guide[i][j] = units_guide[i - 1][j]
+
+                                            if core_map[auxfarow - 1][auxfacol + 1] != 0:
+                                                units_guide[i][j] = units_guide[i - 1][j+1]
+
+                                    else:
+                                        if core_map[auxfarow - 1][auxfacol] == 0:
+                                            n_units += 1
+                                            units_guide[i][j] = n_units
+
+                                        else:
+                                            units_guide[i][j] = units_guide[i - 1][j]
+
+                            else:
+                                if core_map[auxfarow - 1][auxfacol - 1] == 0 \
+                                        and core_map[auxfarow - 1][auxfacol] == 0 \
+                                        and core_map[auxfarow][auxfacol - 1] == 0:
+                                    n_units += 1
+                                    units_guide[i][j] = n_units
+
+                                else:
+                                    if core_map[auxfarow - 1][auxfacol - 1] != 0:
+                                        units_guide[i][j] = units_guide[i - 1][j - 1]
+
+                                    else:
+                                        if core_map[auxfarow - 1][auxfacol] != 0:
+                                            units_guide[i][j] = units_guide[i - 1][j]
+
+                                        else:
+                                            units_guide[i][j] = units_guide[i][j-1]
+
+
+                    else:
+                        if rowinfa != 0:
+                            n_units += 1
+                            units_guide[i][j] = n_units
+                        else:
+                            if colinfa != newchn_side - 1:
+                                if core_map[auxfarow - 1][auxfacol] == 0:
+                                    n_units += 1
+                                    units_guide[i][j] = n_units
+
+                                else:
+                                    units_guide[i][j] = units_guide[i - 1][j]
+
+
+                            else:
+                                if core_map[auxfarow - 1][auxfacol] == 0 \
+                                        and core_map[auxfarow - 1][auxfacol + 1] == 0:
+                                    n_units += 1
+                                    units_guide[i][j] = n_units
+
+                                else:
+                                    if core_map[auxfarow - 1][auxfacol] != 0:
+                                        units_guide[i][j] = units_guide[i - 1][j]
+
+                                    else:
+                                        units_guide[i][j] = units_guide[i - 1][j + 1]
+
+
+                else:
+                    if auxfacol != 0:
+                        if colinfa != 0:
+                            n_units += 1
+                            units_guide[i][j] = n_units
+
+                        else:
+                            if core_map[auxfarow][auxfacol - 1] == 0:
+                                n_units += 1
+                                units_guide[i][j] = n_units
+
+                            else:
+                                units_guide[i][j] = units_guide[i][j - 1]
+                    else:
+                        n_units += 1
+                        units_guide[i][j] = n_units
+
+    print(n_units)
     # ------------------------------------------------------------------------------- #
     #                            WRITING                                              #
     # ------------------------------------------------------------------------------- #
@@ -1639,8 +1772,12 @@ def main():
     chanmaplines = file.readlines()
     file.close()
 
+    chanmaplines.append("Dlev |  Nº of old channels | Nº of new channels | Nº of units \n")
+    chanmaplines.append(" " + str(dlev) + "       " + str(oldnchn) + "      " + str(newchn_tot) +
+                        "      " + str(n_units) + "\n")
     chanmaplines.append("Nº of lines to read \n")
     chanmaplines.append(" " + str(tot_teor_chn) + "\n\n")
+
     aux = int(0)
     for i in range(0, totchansrow_s):
         for j in range(0, totchanscol_s):
@@ -1649,12 +1786,18 @@ def main():
                 chanmaplines.append(str(aux) + "  " + str(totsubchn_in_chn[i][j][0]) + "  " +
                                     str(totsubchn_in_chn[i][j][1]) + "\n")
 
+    chanmaplines.append('\n Comparison units for the homogenized channels \n')
+    chanmaplines.append('------------------------------------------------- \n')
+    aux = 0
+    for i in range(0, totchansrow_n):
+        for j in range(0, totrodscol_n):
+            if units_guide[i][j] != 0:
+                aux += 1
+                chanmaplines.append(str(aux) + "     " + str(units_guide[i][j]) + "\n")
     file = open(filename, 'w')
     file.writelines(chanmaplines)
     file.close()
 
-    print(old_coordsX)
-    print(old_coordsY)
     # TODO Assess that it is compatible with different assembly types and power profiles
     # TODO correct the alignment when writing lines (e.g. in channels or gaps cards) -> deck.inp file is more readable
     # TODO merge the procedure of obtaining a variable from a document (line_aux etc) in a function

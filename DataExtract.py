@@ -193,26 +193,43 @@ def main():
     '''
 
     # open the files
-    file = open("channels.out", "r")
-    lines_chan = file.readlines()
-    file.close()
-    
-    file = open("deck.dnb.out", "r")
-    lines_dnb = file.readlines()
-    file.close()
 
-    file = open("deckr.out", "r")
-    lines_deckr = file.readlines()
-    file.close()
+    # file = open("channels.out", "r")
+    # lines_chan = file.readlines()
+    # file.close()
 
-    file = open("cpld_temp_dens_summary.out", "r")
-    lines_summary = file.readlines()
-    file.close()
+    # file = open("new_channels.out", "r")
+    # new_lines_chan = file.readlines()
+    # file.close()
     
+    # file = open("deck.dnb.out", "r")
+    # lines_dnb = file.readlines()
+    # file.close()
+
+    # file = open("new_deck.dnb.out", "r")
+    # new_lines_dnb = file.readlines()
+    # file.close()
+
+    # file = open("deckr.out", "r")
+    # lines_deckr = file.readlines()
+    # file.close()
+
+    # file = open("new_deckr.out", "r")
+    # new_lines_deckr = file.readlines()
+    # file.close()
+
+    # file = open("cpld_temp_dens_summary.out", "r")
+    # lines_summary = file.readlines()
+    # file.close()
+
+    # file = open("new_cpld_temp_dens_summary.out", "r")
+    # new_lines_summary = file.readlines()
+    # file.close()
+
     file = open("Channelsmap.txt", "r")
     lines_channelsmap = file.readlines()
     file.close()
-    
+
     # conversion factor, inches to mm
     cf1 = 0.0254
 
@@ -228,27 +245,72 @@ def main():
     # ['Beautiful', 'is', 'better', 'than', 'ugly']
     
     # gets the channel map
-    
-    linaux = lines_channelsmap[findheaderinline(lines_channelsmap, "Nº of lines to read") + 1]
+
+    linaux = lines_channelsmap[findheaderinline(lines_channelsmap, "Dlev") + 1].split()
+    dlev = int(linaux[0])
+    oldnchn = int(linaux[1])
+    newchn_tot = int(linaux[2])
+    n_units = int(linaux[3])
+    linaux = lines_channelsmap[findheaderinline(lines_channelsmap, "Nº of lines to read") + 1].split()
     chmp_dim = int(linaux[0])
-    
     channmap = np.zeros((chmp_dim, 3), dtype=int)
+    teorchn_in_newchn = np.zeros((newchn_tot, dlev**2 + 1), dtype=int)
+    mininfo = 4*((dlev - 1)**2 + dlev - 1) + 1
+    maxinfo = 1 + 4 + 1 + mininfo
+    calc_units = np.zeros((n_units, maxinfo), dtype=int)
+
     for i in range(0, chmp_dim):
-        linaux = lines_channelsmap[findheaderinline(lines_channelsmap, "Nº of lines to read") + 3 + i]
-        chmp_dim[i, :] = [int(linaux[0]), int(linaux[1]), int(linaux[2])]
+        linaux = lines_channelsmap[findheaderinline(lines_channelsmap, "Nº of lines to read") + 3 + i].split()
+        channmap[i, :] = [int(linaux[0]), int(linaux[1]), int(linaux[2])]
+        teorchn_in_newchn[int(linaux[1]) - 1][0] += 1
+        aux = teorchn_in_newchn[int(linaux[1]) - 1][0]
+        teorchn_in_newchn[int(linaux[1]) - 1][aux] = int(linaux[0])
+
+    for i in range(0, newchn_tot):
+        linaux2 = lines_channelsmap[findheaderinline(lines_channelsmap, "Comparison units") + 2 + i].split()
+        aux2 = int(linaux2[1])  # nº of unit
+        aux3 = calc_units[aux2 - 1][0]  # nº of previous newchannels
+        aux4 = int(linaux2[0])  # nº of the newchannel
+        calc_units[aux2 - 1][1 + aux3] = aux4  # stores the newchannel
+        calc_units[aux2 - 1][0] += 1  # now there is one more newchannel in that unit
+
+        for j in range(1, dlev**2 + 1):  # for every theoretical subchannel in the newchannel
+            aux5 = teorchn_in_newchn[aux4 - 1][j]  # number of the theoretical subchannel
+            aux6 = channmap[aux5 - 1][2]  # which old subchannel corresponds to that theoretical subchannel
+            aux7 = calc_units[aux2 - 1][5]   # how many old subchannels are there currently stored in that unit
+            found = False
+            for k in range(0, aux7):  # for the already stored subchannels
+                if calc_units[aux2 - 1][6 + k] == aux6:
+                    found = True
+                    break
+
+            if not found:  # one more!!!
+                aux7 += 1
+                calc_units[aux2 - 1][5] = aux7
+                calc_units[aux2 - 1][5 + aux7] = aux6
+
+    file = open("Check.txt", 'w')
+    file.close()
+    file = open("Check.txt", 'r')
+    checkmaplines = file.readlines()
+    file.close()
+
+    for i in range(0, n_units):
+        linaux = calc_units[i][:]
+        linaux2 = []
+        for j in range(0, maxinfo):
+            linaux2.append(str(linaux[j]))
+        linaux2 = '     ' + '   '.join(linaux2) + '\n'
+        checkmaplines.append(linaux2)
+
+    file = open("Check.txt", 'w')
+    file.writelines(checkmaplines)
+    file.close()
 
     # -----------------------------------------------------------------------DATA ANALYSIS----------------------------------------------------------------
     
     
     # -----------------------------------------------------------------------INFO STORAGE-----------------------------------------------------------------
     
-    
-    
-
-
-
-
-
-
 
 main()
