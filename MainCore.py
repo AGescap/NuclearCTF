@@ -202,7 +202,17 @@ def main():
     nchn_side = nrods_side + 1
     nchn = nchn_side**2
 
-    dlev = 2
+    CONSOLE = False
+    if CONSOLE == True:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-dlev", "--dlev", type=int)
+
+        args = parser.parse_args()
+        dlev = args.dlev
+
+    else:
+        dlev = 2
+
     indicradprof = 0
 
     if nchn_side % dlev != 0:
