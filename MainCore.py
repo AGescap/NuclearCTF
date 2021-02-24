@@ -201,8 +201,7 @@ def main():
     nrods_side = int(np.sqrt(nrods))
     nchn_side = nrods_side + 1
     nchn = nchn_side**2
-
-    dlev = 2
+    dlev = 3
     indicradprof = 0
 
     if nchn_side % dlev != 0:
@@ -395,7 +394,6 @@ def main():
             cont1 = 0
             cont2 = 0
 
-    print(first_fa_left)
     gap_betw_fa_tot = fa_connections * newchn_side
     newngaps_tot = gap_betw_fa_tot + fa_num * inner_gaps_in_new_fa
 
@@ -996,7 +994,6 @@ def main():
                         n_units += 1
                         units_guide[i][j] = n_units
 
-    print(n_units)
     # ------------------------------------------------------------------------------- #
     #                            WRITING                                              #
     # ------------------------------------------------------------------------------- #
