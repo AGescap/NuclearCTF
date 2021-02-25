@@ -218,7 +218,7 @@ def main():
         dlev = args.dlev
 
     else:
-        dlev = 2
+        dlev = 3
 
     indicradprof = 0
 
@@ -1017,11 +1017,8 @@ def main():
     # ------------------------------------------------------------------------------- #
 
     # Substitutes the number of channels in Group 2
+
     substitute(lines, "NCH NDM2", [newchn_tot], [0], time=1, fwd=1)
-    # line_aux = lines[findheaderinline(lines, "NCH NDM2") + 1].split()
-    # line_aux[0] = str(newchn_tot)
-    # line_aux = '     ' + '    '.join(line_aux) + '\n'
-    # lines[findheaderinline(lines, "NCH NDM2") + 1] = line_aux
 
     # Deletes the excess of lines in Card 2.2
 
@@ -1044,10 +1041,6 @@ def main():
 
     # Changes NCHN in Card 4.2
     substitute(lines, "ISEC    NCHN  NONO", [newchn_tot], [1], time=1, fwd=1)
-    # line_aux = lines[findheaderinline(lines, "ISEC    NCHN  NONO") + 1].split()
-    # line_aux[1] = str(newchn_tot)
-    # line_aux = '     ' + '    '.join(line_aux) + '\n'
-    # lines[findheaderinline(lines, "ISEC    NCHN  NONO") + 1] = line_aux
 
     # Deletes excess lines in Card 4.4
 
@@ -1055,24 +1048,12 @@ def main():
 
     # Changes IWDE in Card 4.5
     substitute(lines, "IWDE", [newchn_tot], [0], time=1, fwd=1)
-    # line_aux = lines[findheaderinline(lines, "IWDE") + 1].split()
-    # line_aux[0] = str(newchn_tot)
-    # line_aux = '     ' + '    '.join(line_aux) + '\n'
-    # lines[findheaderinline(lines, "IWDE") + 1] = line_aux
 
     # Changes MSIM in Card 4.6
     substitute(lines, "MSIM", [new_msim], [0], time=1, fwd=1)
-    # line_aux = lines[findheaderinline(lines, "MSIM") + 1].split()
-    # line_aux[0] = str(new_msim)
-    # line_aux = '     ' + '    '.join(line_aux) + '\n'
-    # lines[findheaderinline(lines, "MSIM") + 1] = line_aux
 
     # Substitutes NCD in Card 7.1. Creates the new values to store in Card 7.2
     substitute(lines, "NCD NGT", [new_ncd], [0], time=1, fwd=1)
-    # line_aux = lines[findheaderinline(lines, "NCD NGT") + 1].split()
-    # line_aux[0] = str(new_ncd)
-    # line_aux = '     ' + '    '.join(line_aux) + '\n'
-    # lines[findheaderinline(lines, "NCD NGT") + 1] = line_aux
 
     clock = int(0)
 
@@ -1701,18 +1682,9 @@ def main():
 
     if ngt > 0:
         substitute(lines, "NMAT NDM2", [1], [0], time=1, fwd=1)
-        # line_aux = lines[findheaderinline(lines, "NMAT NDM2", time=1) + 1].split()
-        # line_aux[0] = "1"
-        # line_aux = '     ' + '    '.join(line_aux) + '\n'
-        # lines[findheaderinline(lines, "NMAT NDM2", time=1) + 1] = line_aux
 
     # Changes NAXP in Card 11.1
     substitute(lines, "NQA NAXP MNXN", [1], [1], time=1, fwd=1)
-    # line_aux = lines[findheaderinline(lines, "NQA NAXP MNXN", time=1) + 1].split()
-    # line_aux[1] = str(1)
-    # line_aux = '     ' + '   '.join(line_aux) + '\n'
-    # lines[findheaderinline(lines, "NQA NAXP MNXN",
-    #                        time=1) + 1] = line_aux
 
     # Deletes second axial profile (repeated Cards 11.3 and 11.4, that is included when there exist guide tubes.
     # In future versions this could be linked to the number of axial profiles left.
@@ -1723,10 +1695,6 @@ def main():
     # Changes number of boundary conditions in Card 13.1
 
     substitute(lines, "NBND NKBD NFUN", [2*newchn_tot], [0], time=1, fwd=1)
-    line_aux = lines[findheaderinline(lines, "NBND NKBD NFUN", time=1) + 1].split()
-    # line_aux[0] = str(2*newchn_tot)
-    # line_aux = '     ' + '   '.join(line_aux) + '\n'
-    # lines[findheaderinline(lines, "NBND NKBD NFUN", time=1) + 1] = line_aux
 
     # deletes excess of boundary conditions in card 13.4
 
@@ -1741,17 +1709,9 @@ def main():
     
     # Changes the rod map dimensions in Card 17.2
     substitute(lines, "TOTRODSROW TOTRODSCOL", [totrodsrow_n, totrodscol_n], [0, 1], time=1, fwd=1)
-    # line_aux = lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL", time=1) + 1].split()
-    # line_aux[0], line_aux[1] = str(totrodsrow_n), str(totrodscol_n)
-    # line_aux = '     ' + '   '.join(line_aux) + '\n'
-    # lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL", time=1) + 1] = line_aux
 
     # Changes the channel map dimensions in Card 17.3
     substitute(lines, "TOTCHANSROW TOTCHANSCOL", [totchansrow_n, totchanscol_n], [0, 1], time=1, fwd=1)
-    # line_aux = lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL", time=1) + 1].split()
-    # line_aux[0], line_aux[1] = str(totchansrow_n), str(totchanscol_n)
-    # line_aux = '     ' + '   '.join(line_aux) + '\n'
-    # lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL", time=1) + 1] = line_aux
 
     # Deletes previous rod maps and channel maps
 
