@@ -370,22 +370,8 @@ def main():
     # gets the number of connections between adjacent core maps
 
     fa_connections = int(0)
-    first_fa_left = np.zeros(fa_numrow - 1, dtype=int)
-    aux1 = int(0)
-    cont1 = int(0)
-    cont2 =  int(0)
-    aux2 = int(0)
     for i in range(0, fa_numrow):
         for j in range(0, fa_numcol):
-            if i != fa_numrow - 1:
-                if core_map[i][j] != 0 and cont1 == 0:
-                    aux1 = j
-                    cont1 = 1
-
-                if core_map[i+1][j] !=0 and cont2 == 0:
-                    aux2 = j
-                    cont2 = 1
-
             if core_map[i][j] != 0:
                 if i != fa_numrow - 1:
                     if j != fa_numcol - 1:
@@ -402,15 +388,6 @@ def main():
                     if j != fa_numcol - 1:
                         if core_map[i][j+1] != 0:
                             fa_connections += 1
-
-        if i != fa_numrow - 1:
-            if aux1 <= aux2:
-                first_fa_left[i] = 1
-            else:
-                first_fa_left[i] = -1
-
-            cont1 = 0
-            cont2 = 0
 
     gap_betw_fa_tot = fa_connections * newchn_side
     newngaps_tot = gap_betw_fa_tot + fa_num * inner_gaps_in_new_fa
@@ -490,28 +467,13 @@ def main():
 
     # creates a matrix to store the data of the subchannels, so they can be merged afterwards
 
-    xsiz = np.zeros(nchn_side, dtype=np.float64)
-    ysiz = np.zeros(nchn_side, dtype=np.float64)
-    new_xsiz = np.zeros(newchn_side, dtype=np.float64)
-    new_ysiz = np.zeros(newchn_side, dtype=np.float64)
+    siz = np.zeros(nchn_side, dtype=np.float64)
 
-    xsiz[0] = free_sp
-    ysiz[0] = free_sp
-    xsiz[-1] = free_sp
-    ysiz[-1] = free_sp
-
-    new_xsiz[0] = free_sp + (dlev - 1) * pp
-    new_xsiz[-1] = free_sp + (dlev - 1) * pp
-    new_ysiz[0] = free_sp + (dlev - 1) * pp
-    new_ysiz[-1] = free_sp + (dlev - 1) * pp
+    siz[0] = free_sp
+    siz[-1] = free_sp
 
     for i in range(1, nchn_side - 1):
-        xsiz[i] = pp
-        ysiz[i] = pp
-
-    for i in range(1, newchn_side - 1):
-        new_xsiz[i] = dlev * pp
-        new_ysiz[i] = dlev * pp
+        siz[i] = pp
 
     # TODO ysiz and new_ysiz will be redundant as long as the FAs are squared arrays
 
@@ -522,7 +484,7 @@ def main():
 
     for i in range(0, nchn_side):
         for j in range(0, nchn_side):
-            an_0[i][j] = xsiz[j] * ysiz[i]
+            an_0[i][j] = siz[j] * siz[i]
 
     pw = np.zeros((nchn_side, nchn_side), dtype=np.float64)
 
@@ -550,18 +512,6 @@ def main():
         for j in range(0, nchn_side):
             subchannels_in_channel[i // dlev][j // dlev][i % dlev][j % dlev] = [i, j]
 
-    # defines a function that finds if a subchannel (subch) is contained in a certain new channel that
-    # will contain dlev*dlev subchannels
-
-    def findsubchannelinchannel(sub2chan, subch):
-        aux = 0
-        for i in range(0, newchn):
-            for j in range(0, dlev):
-                for k in range(0, dlev):
-                    if sub2chan[i][j][k] == subch:
-                        aux = i + 1
-                        break
-        return aux
 
     # new channel data
 
