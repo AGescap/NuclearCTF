@@ -121,6 +121,13 @@ def refchannel(numchannel, dlevel, n_sbchn_side):
     [x, y] = retrieve_xy(numchannel, new_chn_per_side)
     return 1 + (x-1) * dlevel + (new_chn_per_side - y) * n_sbchn_side * dlevel
 
+def substitute(doc, string, new_data, pos_string, time=1, fwd=1):
+    linaux = doc[findheaderinline(doc, string, time=time) + fwd].split()
+    for i in range(0, len(new_data)):
+        linaux[pos_string[i]] = str(new_data[i])
+
+    linaux = linaux = '     ' + '   '.join(linaux) + '\n'
+    doc[findheaderinline(doc, string, time=time) + fwd] = linaux
 
 def format_e(n):    # This function allows to write a float as a string with scientific notation
     if abs(n) < 1e-5:
@@ -201,7 +208,18 @@ def main():
     nrods_side = int(np.sqrt(nrods))
     nchn_side = nrods_side + 1
     nchn = nchn_side**2
-    dlev = 3
+
+    CONSOLE = False
+    if CONSOLE == True:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-dlev", "--dlev", type=int)
+
+        args = parser.parse_args()
+        dlev = args.dlev
+
+    else:
+        dlev = 3
+
     indicradprof = 0
 
     if nchn_side % dlev != 0:
@@ -352,22 +370,8 @@ def main():
     # gets the number of connections between adjacent core maps
 
     fa_connections = int(0)
-    first_fa_left = np.zeros(fa_numrow - 1, dtype=int)
-    aux1 = int(0)
-    cont1 = int(0)
-    cont2 =  int(0)
-    aux2 = int(0)
     for i in range(0, fa_numrow):
         for j in range(0, fa_numcol):
-            if i != fa_numrow - 1:
-                if core_map[i][j] != 0 and cont1 == 0:
-                    aux1 = j
-                    cont1 = 1
-
-                if core_map[i+1][j] !=0 and cont2 == 0:
-                    aux2 = j
-                    cont2 = 1
-
             if core_map[i][j] != 0:
                 if i != fa_numrow - 1:
                     if j != fa_numcol - 1:
@@ -384,15 +388,6 @@ def main():
                     if j != fa_numcol - 1:
                         if core_map[i][j+1] != 0:
                             fa_connections += 1
-
-        if i != fa_numrow - 1:
-            if aux1 <= aux2:
-                first_fa_left[i] = 1
-            else:
-                first_fa_left[i] = -1
-
-            cont1 = 0
-            cont2 = 0
 
     gap_betw_fa_tot = fa_connections * newchn_side
     newngaps_tot = gap_betw_fa_tot + fa_num * inner_gaps_in_new_fa
@@ -472,28 +467,13 @@ def main():
 
     # creates a matrix to store the data of the subchannels, so they can be merged afterwards
 
-    xsiz = np.zeros(nchn_side, dtype=np.float64)
-    ysiz = np.zeros(nchn_side, dtype=np.float64)
-    new_xsiz = np.zeros(newchn_side, dtype=np.float64)
-    new_ysiz = np.zeros(newchn_side, dtype=np.float64)
+    siz = np.zeros(nchn_side, dtype=np.float64)
 
-    xsiz[0] = free_sp
-    ysiz[0] = free_sp
-    xsiz[-1] = free_sp
-    ysiz[-1] = free_sp
-
-    new_xsiz[0] = free_sp + (dlev - 1) * pp
-    new_xsiz[-1] = free_sp + (dlev - 1) * pp
-    new_ysiz[0] = free_sp + (dlev - 1) * pp
-    new_ysiz[-1] = free_sp + (dlev - 1) * pp
+    siz[0] = free_sp
+    siz[-1] = free_sp
 
     for i in range(1, nchn_side - 1):
-        xsiz[i] = pp
-        ysiz[i] = pp
-
-    for i in range(1, newchn_side - 1):
-        new_xsiz[i] = dlev * pp
-        new_ysiz[i] = dlev * pp
+        siz[i] = pp
 
     # TODO ysiz and new_ysiz will be redundant as long as the FAs are squared arrays
 
@@ -504,7 +484,7 @@ def main():
 
     for i in range(0, nchn_side):
         for j in range(0, nchn_side):
-            an_0[i][j] = xsiz[j] * ysiz[i]
+            an_0[i][j] = siz[j] * siz[i]
 
     pw = np.zeros((nchn_side, nchn_side), dtype=np.float64)
 
@@ -532,18 +512,6 @@ def main():
         for j in range(0, nchn_side):
             subchannels_in_channel[i // dlev][j // dlev][i % dlev][j % dlev] = [i, j]
 
-    # defines a function that finds if a subchannel (subch) is contained in a certain new channel that
-    # will contain dlev*dlev subchannels
-
-    def findsubchannelinchannel(sub2chan, subch):
-        aux = 0
-        for i in range(0, newchn):
-            for j in range(0, dlev):
-                for k in range(0, dlev):
-                    if sub2chan[i][j][k] == subch:
-                        aux = i + 1
-                        break
-        return aux
 
     # new channel data
 
@@ -1000,21 +968,18 @@ def main():
 
     # Substitutes the number of channels in Group 2
 
-    line_aux = lines[findheaderinline(lines, "NCH NDM2") + 1].split()
-    line_aux[0] = str(newchn_tot)
-    line_aux = '     ' + '    '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
-    lines[findheaderinline(lines, "NCH NDM2") + 1] = line_aux  # stores the modified line into its position
+    substitute(lines, "NCH NDM2", [newchn_tot], [0], time=1, fwd=1)
 
     # Deletes the excess of lines in Card 2.2
 
     removeexcesslines(lines, findheaderinline(lines, "I AN PW", time=1), oldnchn, newchn_tot)
 
     # Changes the number of gaps in Card 3.1
-
-    line_aux = lines[findheaderinline(lines, "NK NDM2") + 1].split()
-    line_aux[0] = str(newngaps_tot)
-    line_aux = '     ' + '    '.join(line_aux) + '\n'
-    lines[findheaderinline(lines, "NK NDM2") + 1] = line_aux
+    substitute(lines, "NK NDM2", [newngaps_tot], [0], time=1, fwd=1)
+    # line_aux = lines[findheaderinline(lines, "NK NDM2") + 1].split()
+    # line_aux[0] = str(newngaps_tot)
+    # line_aux = '     ' + '    '.join(line_aux) + '\n'
+    # lines[findheaderinline(lines, "NK NDM2") + 1] = line_aux
 
     # Deletes excess of gaps in Card 3.3
 
@@ -1025,36 +990,21 @@ def main():
     removeexcesslines(lines, findheaderinline(lines, "K X Y NORM", time=1), ngaps_tot, newngaps_tot)
 
     # Changes NCHN in Card 4.2
-
-    line_aux = lines[findheaderinline(lines, "ISEC    NCHN  NONO") + 1].split()
-    line_aux[1] = str(newchn_tot)
-    line_aux = '     ' + '    '.join(line_aux) + '\n'
-    lines[findheaderinline(lines, "ISEC    NCHN  NONO") + 1] = line_aux
+    substitute(lines, "ISEC    NCHN  NONO", [newchn_tot], [1], time=1, fwd=1)
 
     # Deletes excess lines in Card 4.4
 
     removeexcesslines(lines, findheaderinline(lines, "KCHA KCHA", time=1), nchn_tot, newchn_tot)
 
     # Changes IWDE in Card 4.5
-
-    line_aux = lines[findheaderinline(lines, "IWDE") + 1].split()
-    line_aux[0] = str(newchn_tot)
-    line_aux = '     ' + '    '.join(line_aux) + '\n'
-    lines[findheaderinline(lines, "IWDE") + 1] = line_aux
+    substitute(lines, "IWDE", [newchn_tot], [0], time=1, fwd=1)
 
     # Changes MSIM in Card 4.6
-
-    line_aux = lines[findheaderinline(lines, "MSIM") + 1].split()
-    line_aux[0] = str(new_msim)
-    line_aux = '     ' + '    '.join(line_aux) + '\n'
-    lines[findheaderinline(lines, "MSIM") + 1] = line_aux
+    substitute(lines, "MSIM", [new_msim], [0], time=1, fwd=1)
 
     # Substitutes NCD in Card 7.1. Creates the new values to store in Card 7.2
+    substitute(lines, "NCD NGT", [new_ncd], [0], time=1, fwd=1)
 
-    line_aux = lines[findheaderinline(lines, "NCD NGT") + 1].split()
-    line_aux[0] = str(new_ncd)
-    line_aux = '     ' + '    '.join(line_aux) + '\n'
-    lines[findheaderinline(lines, "NCD NGT") + 1] = line_aux
     clock = int(0)
 
     for i in range(0, ncd):
@@ -1099,22 +1049,18 @@ def main():
         lines[findheaderinline(lines, "CDL J CD1", time=1) + 1 + i] = line_aux
 
     # Changes NRRD in Card 8.1
-
-    line_aux = lines[findheaderinline(lines, "NRRD NSRD", time=1) + 1].split()
-    line_aux[0] = str(newnrod_tot)
-    line_aux = '     ' + '    '.join(line_aux) + '\n'
-    lines[findheaderinline(lines, "NRRD NSRD", time=1) + 1] = line_aux
+    substitute(lines, "NRRD NSRD", [newnrod_tot], [0], time=1, fwd=1)
+    # line_aux = lines[findheaderinline(lines, "NRRD NSRD", time=1) + 1].split()
+    # line_aux[0] = str(newnrod_tot)
+    # line_aux = '     ' + '    '.join(line_aux) + '\n'
+    # lines[findheaderinline(lines, "NRRD NSRD", time=1) + 1] = line_aux
 
     # Removes excess of lines in Card 8.3
 
     removeexcesslines(lines, findheaderinline(lines, "NSCH PIE"), 2 * nrods_tot, 2 * newnrod_tot)
 
     # Changes NRT1 in Card 8.6
-
-    line_aux = lines[findheaderinline(lines, "NRT1 NST1", time=1) + 1].split()
-    line_aux[1] = str(newnrod_tot)
-    line_aux = '     ' + '    '.join(line_aux) + '\n'
-    lines[findheaderinline(lines, "NRT1 NST1", time=1) + 1] = line_aux
+    substitute(lines, "NRT1 NST1", [newnrod_tot], [1], time=1, fwd=1)
 
     # Deletes excess of lines in Card 8.7
 
@@ -1681,18 +1627,10 @@ def main():
     # Changes NMAT in Card 10.1
 
     if ngt > 0:
-        line_aux = lines[findheaderinline(lines, "NMAT NDM2", time=1) + 1].split()
-        line_aux[0] = "1"
-        line_aux = '     ' + '    '.join(line_aux) + '\n'
-        lines[findheaderinline(lines, "NMAT NDM2", time=1) + 1] = line_aux
+        substitute(lines, "NMAT NDM2", [1], [0], time=1, fwd=1)
 
     # Changes NAXP in Card 11.1
-
-    line_aux = lines[findheaderinline(lines, "NQA NAXP MNXN", time=1) + 1].split()
-    line_aux[1] = str(1)
-    line_aux = '     ' + '   '.join(line_aux) + '\n'  # creates a sole string with the appropriate format
-    lines[findheaderinline(lines, "NQA NAXP MNXN",
-                           time=1) + 1] = line_aux  # stores the modified line into its position
+    substitute(lines, "NQA NAXP MNXN", [1], [1], time=1, fwd=1)
 
     # Deletes second axial profile (repeated Cards 11.3 and 11.4, that is included when there exist guide tubes.
     # In future versions this could be linked to the number of axial profiles left.
@@ -1702,10 +1640,7 @@ def main():
 
     # Changes number of boundary conditions in Card 13.1
 
-    line_aux = lines[findheaderinline(lines, "NBND NKBD NFUN", time=1) + 1].split()
-    line_aux[0] = str(2*newchn_tot)
-    line_aux = '     ' + '   '.join(line_aux) + '\n'
-    lines[findheaderinline(lines, "NBND NKBD NFUN", time=1) + 1] = line_aux
+    substitute(lines, "NBND NKBD NFUN", [2*newchn_tot], [0], time=1, fwd=1)
 
     # deletes excess of boundary conditions in card 13.4
 
@@ -1719,18 +1654,10 @@ def main():
     lines[findheaderinline(lines, "HDF5_NAME VTK_NAME") + 1] = line_aux
     
     # Changes the rod map dimensions in Card 17.2
-
-    line_aux = lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL", time=1) + 1].split()
-    line_aux[0], line_aux[1] = str(totrodsrow_n), str(totrodscol_n)
-    line_aux = '     ' + '   '.join(line_aux) + '\n'
-    lines[findheaderinline(lines, "TOTRODSROW TOTRODSCOL", time=1) + 1] = line_aux
+    substitute(lines, "TOTRODSROW TOTRODSCOL", [totrodsrow_n, totrodscol_n], [0, 1], time=1, fwd=1)
 
     # Changes the channel map dimensions in Card 17.3
-
-    line_aux = lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL", time=1) + 1].split()
-    line_aux[0], line_aux[1] = str(totchansrow_n), str(totchanscol_n)
-    line_aux = '     ' + '   '.join(line_aux) + '\n'
-    lines[findheaderinline(lines, "TOTCHANSROW TOTCHANSCOL", time=1) + 1] = line_aux
+    substitute(lines, "TOTCHANSROW TOTCHANSCOL", [totchansrow_n, totchanscol_n], [0, 1], time=1, fwd=1)
 
     # Deletes previous rod maps and channel maps
 
