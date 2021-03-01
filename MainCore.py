@@ -1061,10 +1061,6 @@ def main():
 
     # Changes NRT1 in Card 8.6
     substitute(lines, "NRT1 NST1", [newnrod_tot], [1], time=1, fwd=1)
-    # line_aux = lines[findheaderinline(lines, "NRT1 NST1", time=1) + 1].split()
-    # line_aux[1] = str(newnrod_tot)
-    # line_aux = '     ' + '    '.join(line_aux) + '\n'
-    # lines[findheaderinline(lines, "NRT1 NST1", time=1) + 1] = line_aux
 
     # Deletes excess of lines in Card 8.7
 
