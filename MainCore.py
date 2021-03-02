@@ -1220,7 +1220,7 @@ def main():
                                 linaux[0] = str(contgap)
                                 linaux[1] = str(contchan)
                                 linaux[2] = str(new_chn_guide[i][j + 1])
-                                linaux[3] = format_e(new_sizes[colinfa])
+                                linaux[3] = format_e(new_sizes[rowinfa])
                                 linaux[4] = format_e(new_sizes[0])
 
                                 linaux2[0] = str(dlev)
