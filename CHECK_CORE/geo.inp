@@ -1,0 +1,41 @@
+*Number of fuel assemblies
+24
+*NUMBER OF FUEL ASSEMBLY TYPES:  
+1
+*DIMENSION OF CORE MESH X Y: 
+6 6
+{model shroud}
+no
+*OPTION FOR CORE MODELING
+** 1 = Model as shown in the following map
+** 4 = Model using quarter core symmetry
+** 8 = Model using eighth core symmetry
+** Note: If using options 4 or 8, make a map of 
+**       the full core and the preprocessor will
+**       take care of breaking it down into quarter
+**       or eighth symmetry
+{symmetry option}
+1
+*FUEL ASSEMBLY MAP
+**1 2 3 4 5 6  
+1 0 0 1 1 0 0
+2 0 1 1 1 1 0
+3 1 1 1 1 1 1
+4 1 1 1 1 1 1
+5 0 1 1 1 1 0
+6 0 0 1 1 0 0
+** AXIAL MESH INFORMATION
+*Number of axial groups
+8
+*Z(mm) top of group   Number of Scalar Cells from last zone to this point
+**Note that you must put the top of the model as the last group
+333.39		3
+377.89      1
+833.37		12
+877.87      1
+1333.35		12
+1377.85     1
+1955.55		15
+2000		   1
+*ALLOCATION OF FUEL TYPES
+assem.inp
