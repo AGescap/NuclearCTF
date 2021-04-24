@@ -748,7 +748,8 @@ def main():
                 lines[findheaderinline(lines, "FQR1 FQR2 FQR3") + 1 + i] = line_aux
 
     # Create the new file and write lines in it
-    file = open('new_deck.inp', 'w')
+    filename = 'new_deck_' + 'DLEV' + str(dlevel) + '.inp'
+    file = open(filename, 'w')
     file.writelines(lines)
     file.close()
 
