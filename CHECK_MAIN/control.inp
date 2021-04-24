@@ -1,0 +1,171 @@
+****************************************************
+*                  Main control data                *
+*****************************************************
+*Title for deck (max 30 characters)
+NuScale
+*Print Rod/Channel map data to Group 17 on deck.inp?
+** MAPS = 1 -- yes
+** MAPS = 0 -- no
+** MAPS
+1
+*Name for the HDF5 file - enter if MAPS=1
+NuScale
+*Name for the VTK file - enter if MAPS=1
+NuScale
+*Units options
+**1 - SI output*
+**3 - US output*
+1
+*EPSO Convergence criterion for pressure correction
+0.001
+*OITMAX Maximum outer iterations before convergence problem
+5
+*IITMAX Maximum inner iterations before convergence problem
+40
+*COURANT 
+1.2
+***************************
+*        MODELS           *
+***************************
+*
+*******************************************
+*     Rod friction factor correlation     *
+*******************************************
+**1 -- original correlation               
+**2 -- COBRA-3C                           
+**3 -- FLICA-4                            
+2
+*******************************************
+*    Entrainment and deposition model     *
+*******************************************
+**0 -- neither entrainment nor deposition 
+**1 -- original model                     
+*******************************************
+1
+********************************************************************
+*                  Mixing and void drift model                     *
+********************************************************************
+**0 -- neither mixing nor void drift                               
+**1 -- user specified constant (two-phase)turbulent mixing coeff.   
+**2 -- single-phase mixing coeff. according to Rogers and Rosehart 
+**3 -- user specified constant single-phase turbulent mixing coeff.
+*******************************************************************
+*IMIX Mixing and void drift model
+3
+********************************************************************
+*        MIXING/VOID DRIFT PARAMETERS - skip if IMIX=0             *
+********************************************************************
+**AAAK - Equilibrium distribution weighting factor Km in 
+**void drift model (0.0 void drift inactive / 1.4 suggested value)
+**Enter for IMIX=1, 2, and 3
+1.4
+**BETA  - Constant mixing coefficient, Enter for IMIX=1 and 3
+**Mixing coefficient for two-phase if IMIX=1
+**Mixing coefficient for single-phase if IMIX=3
+0.05
+**DFROD - Outside rod diameter, Enter only for IMIX=2
+**THETM - Ratio between maximun two-phase turbulent mixing coeff. 
+**and single-phase turbulent mixing coeff. 
+**Enter only for IMIX=2 and 3
+5
+***************************************
+*             Solver                  *
+***************************************
+**0 -- Direct Gaussian                
+**1 -- BSGS with ILUT preconditioner  
+**2 -- GMRES with no preconditioner   
+**3 -- BSGS with no preconditioner    
+**4 -- GMRES with ILUT preconditioner 
+***************************************
+3
+*****************************************
+*         INITIAL CONDITIONS            *   
+*****************************************
+*Initialization mass flow rate (kg/s)
+14.71
+*Initialization temperature for the rods (C)
+258.33
+*Reference pressure (bar)
+127.6
+*Reference enthalpy (kJ/kg)
+-258.33
+*Reference enthalpy for noncondesables (kJ/kg)
+258.33
+*Fraction of heat produced by rods that is released directly to the coolant
+0.06
+*****************************************
+*      GLOBAL BOUNDARY CONDITIONS       *
+*****************************************
+**
+*************************************
+*      BOUNDARY CONDITION TYPE      *
+*************************************
+**1 -- pressure and enthalpy        
+**2 -- mass flow rate and enthalpy  
+**3 -- mass flow rate only          
+**4 -- mass source                  
+**5 -- pressure sink                
+*************************************
+*Inlet boundary condition type
+2
+*Outlet boundaty condition type
+1
+***************************************
+*      BOUNDARY CONDITION VALUES      *
+***************************************
+*Total inlet mass flow rate (kg/s) 
+*Only if BC type is 2 or 3 at inlet (0.0 otherwise)
+14.71
+*Inlet Enthalpy (kJ/kg}
+*Only if BC type is 1 or 2 at inlet (0.0 otherwise)
+-258.33
+*Outlet Enthalpy (kJ/kg}
+*Only if BC type is 1 or 2 at outlet (0.0 otherwise)
+-288
+*Inlet Pressure (bar)
+*Only if BC type is 1 or 5 at inlet (0.0 otherwise)
+0.0
+*Outlet Pressure (bar)
+*Only if BC type is 1 or 5 at outlet (0.0 otherwise)
+127.6
+***************************************
+*      Time Domain Data               *
+***************************************
+{run as transient}
+no
+*DTMIN
+0.000001
+*DTMAX
+0.1
+*TEND
+0.1
+*RTWFP
+1000.0
+*MAXITS
+10000
+***************************************
+*      Convergence Data               *
+***************************************
+{convergence criteria}
+0.01
+0.01
+0.5
+0.5
+0.5
+***************************************
+*      Output Data                    *
+***************************************
+{edit channels}
+1
+{edit gaps}
+0
+{edit rods}
+1
+{edit dnb}
+1
+{rods vtk}
+1
+{edit hdf5}
+0
+{edit convergence}
+0
